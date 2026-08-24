@@ -2,732 +2,284 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Бронирование квестов</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        html, body {
-            background-color: #000000;
+        * {
             margin: 0;
             padding: 0;
-            width: 100%;
-            min-height: 100vh;
-            overflow-x: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: #ffffff;
+            box-sizing: border-box;
         }
 
         body {
-            background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)), url('https://raw.githubusercontent.com/sultanovtab/Vkletke/refs/heads/main/photo_2026-08-23_15-34-07.jpg');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            box-sizing: border-box;
-            padding: 16px;
-        }
-
-        .container { max-width: 400px; margin: auto; }
-
-        .card {
-            background: rgba(20, 20, 20, 0.85);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             padding: 20px;
-            border-radius: 16px;
-            margin-bottom: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        h2 { font-size: 20px; margin-top: 0; text-align: center; color: #fff; }
-        label { font-size: 14px; color: #ddd; display: block; margin-top: 10px; margin-bottom: 4px; }
-        
-        select, input {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 10px;
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(10, 10, 10, 0.9);
-            color: #fff;
-            box-sizing: border-box;
-            font-size: 15px;
-            outline: none;
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
 
-        input[type="date"] {
-            width: 100%;
-        }
-
-        select option { background: #111; color: #fff; }
-
-        .time-scroll-container {
-            position: relative;
-            margin-bottom: 15px;
-        }
-
-        .time-grid {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            overflow-y: hidden;
-            scroll-behavior: smooth;
-            padding: 8px 0;
-            scroll-snap-type: x mandatory;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-        }
-
-        .time-grid::-webkit-scrollbar {
-            display: none;
-        }
-        
-        .time-slot {
-            background: rgba(40, 40, 40, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 12px 16px;
+        h1 {
             text-align: center;
-            border-radius: 8px;
-            cursor: pointer;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
             font-weight: bold;
             font-size: 14px;
-            transition: all 0.2s;
-            min-width: 70px;
-            white-space: nowrap;
-            flex-shrink: 0;
-            scroll-snap-align: start;
         }
 
-        .time-slot.selected {
-            background: #e74c3c;
-            border-color: #ff6b6b;
-            color: #fff;
-            box-shadow: 0 0 12px rgba(231, 76, 60, 0.5);
-        }
-
-        .time-slot.disabled {
-            background: rgba(100, 100, 100, 0.5);
-            color: #888;
-            border-color: rgba(255, 255, 255, 0.05);
-            text-decoration: line-through;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        .people-scroll-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .people-scroller {
-            display: flex;
-            gap: 6px;
-            overflow-x: auto;
-            flex: 1;
-            scrollbar-width: none;
-            scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .people-scroller::-webkit-scrollbar {
-            display: none;
-        }
-
-        .people-option {
-            background: rgba(40, 40, 40, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #fff;
-            padding: 10px 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            min-width: 50px;
-            text-align: center;
-            flex-shrink: 0;
-            transition: all 0.2s;
-        }
-
-        .people-option.selected {
-            background: #2ecc71;
-            border-color: #27ae60;
-            box-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
-        }
-
-        .people-option:active {
-            transform: scale(0.95);
-        }
-
-        .scroll-hint {
-            font-size: 11px;
-            color: #888;
-            text-align: center;
-            margin-top: 4px;
-        }
-
-        button.main-btn {
-            background-color: #e74c3c;
-            color: #ffffff;
-            border: none;
-            padding: 14px;
+        input, select {
             width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
             font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
             border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
             cursor: pointer;
-            font-weight: bold;
-            margin-top: 10px;
-            transition: opacity 0.2s;
+            transition: all 0.3s;
         }
 
-        button:active { opacity: 0.8; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .admin-panel {
-            display: none;
-            background: rgba(20, 20, 20, 0.95);
-            border: 2px dashed #e74c3c;
-            padding: 15px;
-            margin-top: 20px;
-            border-radius: 16px;
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         }
 
-        .tab-bar {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
-        .tab-bar button {
-            background: rgba(50, 50, 50, 0.8);
-            width: 48%;
-            padding: 10px;
-            font-size: 14px;
-            margin-top: 0;
-            border: none;
-            color: white;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        .booking-item {
-            background: rgba(10, 10, 10, 0.9);
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border-left: 4px solid #f39c12;
-        }
-
-        .booking-item.approved { border-left-color: #2ecc71; }
-        .booking-item.rejected { border-left-color: #e74c3c; }
-        .booking-item.conflict {
-            border: 2px solid #e74c3c;
-            background: rgba(40, 10, 10, 0.9);
-            border-left: 4px solid #e74c3c;
-        }
-
-        .conflict-badge {
-            background-color: #e74c3c;
-            color: white;
-            font-size: 11px;
-            font-weight: bold;
-            padding: 2px 6px;
-            border-radius: 4px;
-            display: inline-block;
-            margin-bottom: 5px;
-        }
-
-        .admin-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .btn-approve {
-            background: #2ecc71;
-            color: #fff;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .btn-reject {
-            background: #e74c3c;
-            color: #fff;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .btn-tg-contact {
-            display: inline-block;
-            background-color: #3498db;
-            color: #ffffff;
-            text-decoration: none;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: bold;
-            margin-top: 4px;
-        }
-        
         .toast {
             position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.9);
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 10px;
             color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            z-index: 999;
-            font-size: 14px;
+            font-weight: bold;
+            transform: translateX(150%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            background: #4caf50;
+        }
+
+        .toast.error {
+            background: #f44336;
+        }
+
+        .admin-link {
             text-align: center;
-            max-width: 90%;
+            margin-top: 20px;
+        }
+
+        .admin-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .admin-link a:hover {
+            text-decoration: underline;
+        }
+
+        .tab-content {
             display: none;
-            border-left: 4px solid #e74c3c;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .bookings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .bookings-table th,
+        .bookings-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+        }
+
+        .bookings-table th {
+            background: #f5f5f5;
+            font-weight: bold;
+        }
+
+        .status-select {
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 12px;
+        }
+
+        .status-select.awaiting {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-select.confirmed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-select.cancelled {
+            background: #f8d7da;
+            color: #721c24;
         }
     </style>
 </head>
 <body>
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('booking')">Бронирование</button>
+            <button class="tab" onclick="switchTab('admin')">Админ-панель</button>
+        </div>
 
-<div class="container">
-    <div class="tab-bar">
-        <button onclick="switchTab('client')">📅 Бронировать</button>
-        <button onclick="checkAdmin()" style="background-color: rgba(80, 80, 80, 0.8);">🛠 Админка</button>
-    </div>
+        <!-- Вкладка бронирования -->
+        <div id="booking-tab" class="tab-content active">
+            <h1>🎮 Бронирование квеста</h1>
+            <form id="booking-form">
+                <div class="form-group">
+                    <label for="quest">Выберите квест:</label>
+                    <select id="quest" required>
+                        <option value="">Выберите квест...</option>
+                        <option value="В Клетке">В Клетке</option>
+                        <option value="Побег из тюрьмы">Побег из тюрьмы</option>
+                        <option value="Зомби апокалипсис">Зомби апокалипсис</option>
+                        <option value="Тайна старого особняка">Тайна старого особняка</option>
+                    </select>
+                </div>
 
-    <!-- КЛИЕНТСКАЯ ЧАСТЬ -->
-    <div id="clientView">
-        <div class="card" id="mainForm">
-            <h2>Квест «В Клетке»</h2>
-            
-            <label>Выбери режим квеста:</label>
-            <select id="questSelect">
-                <option value="славянская оргия">славянская оргия</option>
-                <option value="восточный хардкор">восточный хардкор</option>
-            </select>
+                <div class="form-group">
+                    <label for="date">Дата:</label>
+                    <input type="date" id="date" required>
+                </div>
 
-            <label>Дата:</label>
-            <input type="date" id="bookDate" onchange="loadAvailableSlots()">
+                <div class="form-group">
+                    <label for="time">Время:</label>
+                    <input type="time" id="time" required>
+                </div>
 
-            <label>Свободные сеансы:</label>
-            <div class="time-scroll-container">
-                <div class="time-grid" id="timeGrid"></div>
-                <div class="scroll-hint">← Свайп для прокрутки →</div>
+                <div class="form-group">
+                    <label for="name">Ваше имя:</label>
+                    <input type="text" id="name" required placeholder="Иван Иванов">
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Телефон:</label>
+                    <input type="tel" id="phone" required placeholder="+7 (999) 123-45-67">
+                </div>
+
+                <div class="form-group">
+                    <label for="people">Количество человек:</label>
+                    <input type="number" id="people" min="1" max="10" required placeholder="2">
+                </div>
+
+                <div class="form-group">
+                    <label for="tg-username">Telegram username (опционально):</label>
+                    <input type="text" id="tg-username" placeholder="@username">
+                </div>
+
+                <button type="submit">📝 Забронировать</button>
+            </form>
+        </div>
+
+        <!-- Вкладка админа -->
+        <div id="admin-tab" class="tab-content">
+            <h1>🔐 Админ-панель</h1>
+            <div id="admin-login" style="display: none;">
+                <button onclick="checkAdmin()">Войти как администратор</button>
             </div>
-
-            <label>Количество человек:</label>
-            <div class="people-scroll-container">
-                <div class="people-scroller" id="peopleScroller"></div>
+            <div id="admin-content" style="display: none;">
+                <h2>Список броней</h2>
+                <table class="bookings-table" id="bookings-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Квест</th>
+                            <th>Дата</th>
+                            <th>Время</th>
+                            <th>Имя</th>
+                            <th>Телефон</th>
+                            <th>Чел.</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookings-body"></tbody>
+                </table>
             </div>
-            <div class="scroll-hint">← Выбери количество игроков →</div>
-
-            <label>Ваше имя:</label>
-            <input type="text" id="userName" placeholder="Ваше имя" maxlength="40">
-
-            <label>Российский телефон:</label>
-            <input type="tel" id="userPhone" value="+7 ">
-
-            <button class="main-btn" id="submitBtn" onclick="submitBooking()">Забронировать</button>
         </div>
     </div>
 
-    <!-- ПАНЕЛЬ АДМИНИСТРАТОРА -->
-    <div id="adminView" class="admin-panel">
-        <h2>Панель администратора</h2>
-        <div id="adminBookingsList" style="font-size: 14px; max-height: 500px; overflow-y: auto;">Загрузка броней...</div>
-        <button class="main-btn" onclick="switchTab('client')" style="background-color: #555;">Выйти</button>
-    </div>
-</div>
+    <div id="toast" class="toast"></div>
 
-<!-- Toast для уведомлений -->
-<div id="toast" class="toast"></div>
-
-<script>
-    let tg = window.Telegram.WebApp;
-    tg.expand();
-
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygoXVdarlwZaf7bXb4jZPmZmSAUNVRXLHL6s1lNJeG3mzkGJLNJMNFF9Raw5iXwJ4I/exec";
-    const ALL_SLOTS = ["12:00", "13:30", "15:00", "16:30", "18:00", "19:30", "21:00"];
-    const PEOPLE_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9, 10];
-    
-    let selectedTimeSlot = "";
-    let selectedPeople = 4;
-    let allBookingsCache = [];
-    let currentAdminPassword = "";
-    let lastSubmittedData = null;
-    
-    let tgUser = tg.initDataUnsafe?.user;
-    let tgId = tgUser?.id ? String(tgUser.id) : "";
-    let tgUsername = tgUser?.username ? "@" + tgUser.username : "";
-
-    if (tgUser) document.getElementById('userName').value = tgUser.first_name || '';
-    document.getElementById('bookDate').valueAsDate = new Date();
-    
-    initPeopleScroller();
-    loadAvailableSlots();
-
-    // Функция показа Toast
-    function showToast(message, isSuccess = false) {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.style.display = 'block';
-        toast.style.borderLeftColor = isSuccess ? '#2ecc71' : '#e74c3c';
-        clearTimeout(toast._timeout);
-        toast._timeout = setTimeout(() => {
-            toast.style.display = 'none';
-        }, 4000);
-    }
-
-    function initPeopleScroller() {
-        let scroller = document.getElementById('peopleScroller');
-        scroller.innerHTML = "";
-        PEOPLE_OPTIONS.forEach(num => {
-            let div = document.createElement('div');
-            div.className = 'people-option' + (num === selectedPeople ? ' selected' : '');
-            div.innerText = num;
-            div.onclick = function() {
-                document.querySelectorAll('.people-option').forEach(p => p.classList.remove('selected'));
-                div.classList.add('selected');
-                selectedPeople = num;
-            };
-            scroller.appendChild(div);
-        });
-    }
-
-    const phoneInput = document.getElementById('userPhone');
-    phoneInput.addEventListener('input', function(e) {
-        let input = this.value;
-        let numbers = input.replace(/\D/g, '');
-        if (numbers.length === 0) numbers = '7';
-        if (numbers.length === 1 && numbers[0] === '8') numbers = '7';
-        else if (numbers[0] !== '7') numbers = '7' + numbers;
-        numbers = numbers.substring(0, 11);
-        let formatted = '+7 ';
-        if (numbers.length > 1) formatted += '(' + numbers.substring(1, 4);
-        if (numbers.length > 4) formatted += ') ' + numbers.substring(4, 7);
-        if (numbers.length > 7) formatted += '-' + numbers.substring(7, 9);
-        if (numbers.length > 9) formatted += '-' + numbers.substring(9, 11);
-        this.value = formatted;
-    });
-
-    phoneInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Backspace' && this.value.length <= 3) e.preventDefault();
-    });
-
-    function switchTab(role) {
-        if (role === 'client') {
-            document.getElementById('clientView').style.display = 'block';
-            document.getElementById('adminView').style.display = 'none';
-        } else {
-            document.getElementById('clientView').style.display = 'none';
-            document.getElementById('adminView').style.display = 'block';
-            loadAdminData();
-        }
-    }
-
-// Только измененная функция checkAdmin
-async function checkAdmin() {
-    let password = prompt("Введите пароль администратора:");
-    if (!password) return;
-    
-    try {
-        console.log("🔐 Отправка пароля:", password);
-        
-        let response = await fetch(GOOGLE_SCRIPT_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "verifyAdmin", password: password })
-        });
-        
-        let data = await response.json();
-        console.log("📩 Ответ сервера:", data);
-        
-        if (data.status === "success") {
-            currentAdminPassword = password;
-            showToast("✅ Вход выполнен!", true);
-            switchTab('admin');
-        } else {
-            showToast("❌ Неверный пароль!");
-        }
-    } catch(e) { 
-        console.error("❌ Ошибка проверки пароля:", e);
-        showToast("❌ Ошибка соединения с сервером");
-    }
-}
-
-    async function fetchBookings() {
-        try {
-            let response = await fetch(GOOGLE_SCRIPT_URL);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            allBookingsCache = await response.json();
-        } catch (e) { 
-            console.error("Ошибка загрузки", e);
-            allBookingsCache = [];
-        }
-    }
-
-    async function loadAvailableSlots() {
-        let grid = document.getElementById('timeGrid');
-        grid.innerHTML = "<div style='padding: 12px 16px; color: #888;'>Проверка слотов...</div>";
-        await fetchBookings();
-        let currentDate = document.getElementById('bookDate').value;
-        grid.innerHTML = "";
-
-        let occupiedTimes = allBookingsCache
-            .filter(b => b.date === currentDate && b.status === "Подтверждено")
-            .map(b => b.time);
-
-        let firstFreeSlotIndex = -1;
-
-        ALL_SLOTS.forEach((slot, index) => {
-            let div = document.createElement('div');
-            div.className = 'time-slot';
-            div.innerText = slot;
-
-            if (occupiedTimes.includes(slot)) {
-                div.classList.add('disabled');
-            } else {
-                if (firstFreeSlotIndex === -1) firstFreeSlotIndex = index;
-                if (slot === selectedTimeSlot) div.classList.add('selected');
-                div.onclick = function() {
-                    document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
-                    div.classList.add('selected');
-                    selectedTimeSlot = slot;
-                };
-            }
-            grid.appendChild(div);
-        });
-
-        if (firstFreeSlotIndex !== -1) {
-            setTimeout(() => {
-                let slots = grid.querySelectorAll('.time-slot');
-                if (slots[firstFreeSlotIndex] && !slots[firstFreeSlotIndex].classList.contains('disabled')) {
-                    slots[firstFreeSlotIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
-                    if (!selectedTimeSlot || selectedTimeSlot === "") {
-                        slots[firstFreeSlotIndex].click();
-                    }
-                }
-            }, 100);
-        }
-    }
-
-    async function submitBooking() {
-        let date = document.getElementById('bookDate').value;
-        let name = document.getElementById('userName').value.trim();
-        let phone = document.getElementById('userPhone').value.trim();
-        let digitsOnly = phone.replace(/\D/g, '');
-        let quest = document.getElementById('questSelect').value;
-
-        // Валидация
-        if (!selectedTimeSlot) {
-            showToast("Выберите время сеанса!");
-            return;
-        }
-        if (!date) {
-            showToast("Выберите дату!");
-            return;
-        }
-        if (!name || name.length < 2) {
-            showToast("Введите ваше имя!");
-            return;
-        }
-        if (digitsOnly.length !== 11) {
-            showToast("Введите полный номер (10 цифр после +7)");
-            return;
-        }
-
-        let btn = document.getElementById('submitBtn');
-        btn.disabled = true;
-        btn.innerText = "Бронируем...";
-
-        let bookingData = { 
-            quest: quest, 
-            date: date, 
-            time: selectedTimeSlot, 
-            name: name, 
-            phone: phone,
-            people: selectedPeople,
-            tgUsername: tgUsername,
-            tgId: tgId
-        };
-
-        lastSubmittedData = bookingData;
-
-        try {
-            let response = await fetch(GOOGLE_SCRIPT_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(bookingData)
-            });
-
-            // Убираем no-cors и читаем ответ
-            let result = await response.json();
-            
-            if (result.status === "success") {
-                showToast("✅ Заявка отправлена! Ожидайте подтверждения.", true);
-                // Сброс формы
-                document.getElementById('userPhone').value = '+7 ';
-                selectedTimeSlot = "";
-                selectedPeople = 4;
-                initPeopleScroller();
-                loadAvailableSlots();
-            } else {
-                showToast("❌ Ошибка: " + (result.message || "Неизвестная ошибка"));
-            }
-        } catch (error) {
-            console.error("Ошибка при отправке:", error);
-            showToast("❌ Ошибка при отправке. Проверьте интернет-соединение.");
-        } finally {
-            btn.disabled = false;
-            btn.innerText = "Забронировать";
-        }
-    }
-
-    async function loadAdminData() {
-        let listDiv = document.getElementById('adminBookingsList');
-        listDiv.innerHTML = "Загрузка заявок...";
-        await fetchBookings();
-        
-        if (!allBookingsCache || allBookingsCache.length === 0) {
-            listDiv.innerHTML = "Заявок нет.";
-            return;
-        }
-
-        // Сортировка: сначала новые (по id)
-        let sorted = [...allBookingsCache].reverse();
-
-        // Подсчет конфликтов для ожидающих
-        let pendingBookings = sorted.filter(b => b.status === "Ожидает");
-        let conflicts = {};
-        pendingBookings.forEach(b => {
-            let key = `${b.date}_${b.time}`;
-            if (!conflicts[key]) conflicts[key] = [];
-            conflicts[key].push(b.id);
-        });
-
-        let html = "";
-        sorted.forEach((b) => {
-            let statusClass = b.status === "Подтверждено" ? "approved" : (b.status === "Отклонено" ? "rejected" : "");
-            
-            let isConflict = false;
-            if (b.status === "Ожидает") {
-                let key = `${b.date}_${b.time}`;
-                if (conflicts[key] && conflicts[key].length > 1) {
-                    isConflict = true;
-                    statusClass += " conflict";
-                }
-            }
-
-            // Контактная кнопка
-            let contactBtn = "Нет данных";
-            let contactStr = b.tgContact || "";
-            
-            if (contactStr.includes("t.me/")) {
-                let match = contactStr.match(/t\.me\/([^"]+)/);
-                let uname = match ? match[1] : "";
-                if (uname) {
-                    contactBtn = `<a href="https://t.me/${uname}" target="_blank" class="btn-tg-contact">💬 Написать @${uname}</a>`;
-                }
-            } else if (contactStr.includes("ID:")) {
-                let idNum = contactStr.replace("ID:", "").trim();
-                contactBtn = `<a href="tg://user?id=${idNum}" target="_blank" class="btn-tg-contact">💬 Открыть чат (ID: ${idNum})</a>`;
-            } else if (b.tgId && b.tgId.length > 0) {
-                contactBtn = `<a href="tg://user?id=${b.tgId}" target="_blank" class="btn-tg-contact">💬 Открыть чат</a>`;
-            }
-
-            // Статус на русском
-            let statusText = b.status || "Ожидает";
-            let statusEmoji = statusText === "Подтверждено" ? "✅" : (statusText === "Отклонено" ? "❌" : "⏳");
-
-            html += `
-                <div class="booking-item ${statusClass}">
-                    ${isConflict ? '<div class="conflict-badge">⚠️ Совпадение по времени</div>' : ''}
-                    <b>${b.quest || "Не указан"}</b> ${statusEmoji} [${statusText}]<br>
-                    📅 <b>${b.date} в ${b.time}</b><br>
-                    👥 Игроков: ${b.people || "?"} чел.<br>
-                    👤 ${b.name || "Без имени"} (${b.phone || "без телефона"})<br>
-                    🔗 ${contactBtn}<br>
-                    ${b.status === "Ожидает" ? `
-                        <div class="admin-actions">
-                            <button class="btn-approve" onclick="updateStatus('${b.id}', '${b.tgId || ''}')">✅ Принять</button>
-                            <button class="btn-reject" onclick="updateStatusReject('${b.id}')">❌ Отклонить</button>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        });
-        listDiv.innerHTML = html;
-    }
-
-    async function updateStatus(bookingId, tgId) {
-        if (!currentAdminPassword) {
-            showToast("Сначала войдите как администратор");
-            return;
-        }
-        
-        try {
-            let response = await fetch(GOOGLE_SCRIPT_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ 
-                    action: "updateStatus", 
-                    bookingId: bookingId, 
-                    newStatus: "Подтверждено", 
-                    clientTgId: tgId || "",
-                    password: currentAdminPassword 
-                })
-            });
-            
-            let result = await response.json();
-            if (result.status === "success") {
-                showToast("✅ Заявка принята! Клиент получит уведомление.", true);
-                loadAdminData();
-            } else {
-                showToast("❌ Ошибка: " + (result.message || "Не удалось обновить статус"));
-            }
-        } catch (e) { 
-            console.error("Ошибка обновления статуса:", e);
-            showToast("❌ Ошибка при обновлении");
-        }
-    }
-
-    async function updateStatusReject(bookingId) {
-        if (!currentAdminPassword) {
-            showToast("Сначала войдите как администратор");
-            return;
-        }
-        
-        try {
-            let response = await fetch(GOOGLE_SCRIPT_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ 
-                    action: "updateStatus", 
-                    bookingId: bookingId, 
-                    newStatus: "Отклонено", 
-                    clientTgId: "",
-                    password: currentAdminPassword 
-                })
-            });
-            
-            let result = await response.json();
-            if (result.status === "success") {
-                showToast("✅ Заявка отклонена", true);
-                loadAdminData();
-            } else {
-                showToast("❌ Ошибка: " + (result.message || "Не удалось обновить статус"));
-            }
-        } catch (e) { 
-            console.error("Ошибка обновления статуса:", e);
-            showToast("❌ Ошибка при обновлении");
-        }
-    }
-</script>
+    <script src="script.js"></script>
 </body>
 </html>
