@@ -162,7 +162,7 @@
         }
 
         button:active { opacity: 0.8; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; background-color: #555; }
 
         .admin-panel {
             display: none;
@@ -230,14 +230,15 @@
         }
 
         .warning-box {
-            background: rgba(231, 76, 60, 0.2);
+            background: rgba(231, 76, 60, 0.25);
             border: 1px solid #e74c3c;
-            padding: 10px;
+            padding: 12px;
             border-radius: 8px;
             font-size: 13px;
-            margin-bottom: 12px;
+            margin-bottom: 15px;
             display: none;
             text-align: center;
+            line-height: 1.4;
         }
     </style>
 </head>
@@ -255,7 +256,7 @@
             <h2>Квест «В Клетке»</h2>
             
             <div id="tgWarning" class="warning-box">
-                ⚠️ Внимание! Вы открыли приложение вне Telegram. Бот не сможет прислать вам автоматическое подтверждение. Рекомендуем открывать приложение через кнопку в Telegram-боте!
+                ⚠️ <b>Внимание!</b> Вы открыли приложение не через Telegram-бота.<br>Бот не сможет прислать вам подтверждение и правила.<br><b>Откройте приложение через кнопку в нашем боте!</b>
             </div>
 
             <label>Выбери режим квеста:</label>
@@ -292,7 +293,7 @@
     <!-- ПАНЕЛЬ АДМИНИСТРАТОРА -->
     <div id="adminView" class="admin-panel">
         <h2>Панель администратора</h2>
-        <div id="adminBookingsList" style="font-size: 14px; max-height: 500px; overflow-y: auto;">Загрузка броней...</div>
+        <div id="adminBookingsList" style="font-size: 14px; max-height: 500px; overflow-y: auto;">Загрузка заявок...</div>
         <button class="main-btn" onclick="switchTab('client')" style="background-color: #555;">Выйти</button>
     </div>
 </div>
@@ -314,9 +315,12 @@
     let tgId = tgUser?.id || "";
     let tgUsername = tgUser?.username ? "@" + tgUser.username : "";
 
-    // Проверка окружения Telegram
+    // Жесткая проверка: если нет Telegram ID, блокируем кнопку и показываем предупреждение
     if (!tgId) {
         document.getElementById('tgWarning').style.display = 'block';
+        let submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerText = "❌ Откройте через Telegram-бота";
     }
 
     if (tgUser) document.getElementById('userName').value = tgUser.first_name || '';
@@ -441,6 +445,11 @@
     }
 
     async function submitBooking() {
+        if (!tgId) {
+            alert("Ошибка: Откройте приложение через Telegram-бота!");
+            return;
+        }
+
         let date = document.getElementById('bookDate').value;
         let name = document.getElementById('userName').value.trim();
         let phone = document.getElementById('userPhone').value.trim();
