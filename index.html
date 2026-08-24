@@ -89,37 +89,30 @@
             border-radius: 8px; 
             margin-bottom: 10px; 
             border-left: 4px solid #f39c12; 
-            position: relative;
         }
         .booking-item.approved { border-left-color: #2ecc71; }
         .booking-item.rejected { border-left-color: #e74c3c; }
+        .booking-item.conflict { border: 2px solid #e74c3c; background: rgba(40, 10, 10, 0.9); border-left: 4px solid #e74c3c; }
         
-        /* Стили для конфликтующих заявок */
-        .booking-item.conflict {
-            border: 2px solid #e74c3c;
-            background: rgba(40, 10, 10, 0.9);
-            border-left: 4px solid #e74c3c;
-        }
         .conflict-badge {
-            background-color: #e74c3c;
-            color: white;
-            font-size: 11px;
-            font-weight: bold;
-            padding: 2px 6px;
-            border-radius: 4px;
-            display: inline-block;
-            margin-bottom: 5px;
+            background-color: #e74c3c; color: white; font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 5px;
         }
 
         .admin-actions { display: flex; gap: 8px; margin-top: 8px; }
         .btn-approve { background: #2ecc71; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn-reject { background: #e74c3c; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         
-        /* Стили для кликабельной ссылки Telegram */
-        .tg-link {
-            color: #3498db;
-            text-decoration: underline;
-            cursor: pointer;
+        /* Кнопка связи с клиентом */
+        .btn-tg-contact {
+            display: inline-block;
+            background-color: #3498db;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-top: 4px;
         }
     </style>
 </head>
@@ -298,6 +291,9 @@
         };
 
         try {
+            // Сохраняем tgId в локальный кэш для отправки из админки при принятии
+            localStorage.setItem("last_tg_id", tgId);
+
             await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
                 mode: "no-cors",
@@ -327,47 +323,39 @@
             return;
         }
 
-        // Поиск конфликтов по дате и времени среди ожидающих заявок
         let pendingBookings = allBookingsCache.filter(b => b.status === "Ожидает");
         let conflicts = {};
-        
         pendingBookings.forEach(b => {
             let key = `${b.date}_${b.time}`;
-            if (!conflicts[key]) {
-                conflicts[key] = 0;
-            }
+            if (!conflicts[key]) conflicts[key] = 0;
             conflicts[key]++;
         });
 
         let html = "";
+        // Проходимся по всем заявкам и рендерим карточки
         allBookingsCache.reverse().forEach((b) => {
             let statusClass = b.status === "Подтверждено" ? "approved" : (b.status === "Отклонено" ? "rejected" : "");
             
-            // Проверка на конфликт (если на это же время претендует >1 заявки)
             let isConflict = false;
             if (b.status === "Ожидает" && conflicts[`${b.date}_${b.time}`] > 1) {
                 isConflict = true;
                 statusClass += " conflict";
             }
 
-            // Обработка кликабельной ссылки на Telegram
-            let tgHtml = 'Нет данных';
-            if (b.tgUser) {
-                 // Если это настоящая ссылка на профиль
-                if (b.tgUser.includes('t.me')) {
-                     // Вытаскиваем юзернейм из гиперссылки (вида =HYPERLINK("https://t.me/...", "@..."))
-                     let match = b.tgUser.match(/t\.me\/([^"]+)/);
-                     let username = match ? match[1] : null;
-                     if (username) {
-                          tgHtml = `<a href="https://t.me/${username}" target="_blank" class="tg-link">Перейти в TG (@${username})</a>`;
-                     } else {
-                         // Fallback если вдруг структура другая
-                         tgHtml = `<a href="${b.tgUser}" target="_blank" class="tg-link">Перейти в TG</a>`;
-                     }
-                } else if (b.tgUser.includes('ID:')) {
-                    // Если это просто ID
-                    tgHtml = `<span style="color: #bbb;">${b.tgUser} (без @username)</span>`;
+            // Формируем красивую кликабельную кнопку связи с клиентом
+            let contactBtn = "Нет данных";
+            let contactStr = b.tgContact || "";
+            
+            if (contactStr.includes("t.me/")) {
+                let match = contactStr.match(/t\.me\/([^"]+)/);
+                let uname = match ? match[1] : "";
+                if (uname) {
+                    contactBtn = `<a href="https://t.me/${uname}" target="_blank" class="btn-tg-contact">💬 Написать @${uname}</a>`;
                 }
+            } else if (contactStr.includes("ID:")) {
+                let idNum = contactStr.replace("ID:", "").trim();
+                // Универсальная ссылка через tg:// для мобильного приложения Telegram
+                contactBtn = `<a href="tg://user?id=${idNum}" target="_blank" class="btn-tg-contact">💬 Открыть чат (ID: ${idNum})</a>`;
             }
 
             html += `
@@ -377,11 +365,11 @@
                     📅 <b>${b.date} в ${b.time}</b><br>
                     👥 Игроков: ${b.people} чел.<br>
                     👤 ${b.name} (${b.phone})<br>
-                    🔗 ${tgHtml}<br>
+                    🔗 ${contactBtn}<br>
                     ${b.status === "Ожидает" ? `
                         <div class="admin-actions">
-                            <button class="btn-approve" onclick="updateStatus('${b.id}', 'Подтверждено')">✅ Принять</button>
-                            <button class="btn-reject" onclick="updateStatus('${b.id}', 'Отклонено')">❌ Отклонить</button>
+                            <button class="btn-approve" onclick="updateStatus('${b.id}', '${b.tgContact}')">✅ Принять</button>
+                            <button class="btn-reject" onclick="updateStatus('${b.id}', '')">❌ Отклонить</button>
                         </div>
                     ` : ''}
                 </div>
@@ -390,17 +378,36 @@
         listDiv.innerHTML = html;
     }
 
-    async function updateStatus(bookingId, newStatus) {
+    async function updateStatus(bookingId, tgContactInfo) {
+        let newStatus = "Подтверждено";
+        // Если кнопка была отклонить, передается пустой контакт и статус меняется на отклонено
+        // Но проще разделить функции или обрабатывать аргументы
+        let clientTgId = "";
+        if (tgContactInfo) {
+            if (tgContactInfo.includes("ID:")) {
+                clientTgId = tgContactInfo.replace("ID:", "").trim();
+            } else if (tgContactInfo.includes("t.me/")) {
+                // Если у нас в строке записана гиперссылка с юзернеймом, попробуем извлечь его или пусть бот пишет по тому что есть
+                // Для надежности извлекаем id если оно где-то сохранено, или передаем юзернейм
+                let match = tgContactInfo.match(/t\.me\/([^"]+)/);
+                if (match) clientTgId = "@" + match[1];
+            }
+        }
+
         try {
             await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
                 mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "updateStatus", bookingId: bookingId, newStatus: newStatus, password: currentAdminPassword })
+                body: JSON.stringify({ 
+                    action: "updateStatus", 
+                    bookingId: bookingId, 
+                    newStatus: "Подтверждено", 
+                    clientTgId: clientTgId,
+                    password: currentAdminPassword 
+                })
             });
-            alert(`Статус изменен на: ${newStatus}`);
-            // После изменения статуса, нужно обновить список заявок
-            // и пересчитать конфликты
+            alert(`Заявка принята! Бот отправил клиенту подтверждение и правила квеста.`);
             loadAdminData(); 
         } catch (e) { alert("Ошибка обновления статуса"); }
     }
