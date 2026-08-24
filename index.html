@@ -6,6 +6,7 @@
     <title>Бронирование квестов</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        /* Все стили оставлены без изменений из вашего файла */
         html, body {
             background-color: #000000;
             margin: 0;
@@ -61,7 +62,6 @@
 
         select option { background: #111; color: #fff; }
 
-        /* Горизонтальная прокрутка времени */
         .time-scroll-container {
             position: relative;
             margin-bottom: 15px;
@@ -115,7 +115,6 @@
             opacity: 0.6;
         }
 
-        /* Прокрутка количества людей */
         .people-scroll-container {
             display: flex;
             align-items: center;
@@ -334,7 +333,6 @@
     let tg = window.Telegram?.WebApp;
     if (!tg) {
         alert("Пожалуйста, откройте приложение через Telegram.");
-        // Можно заблокировать кнопку отправки
         document.getElementById('submitBtn').disabled = true;
     } else {
         tg.expand();
@@ -419,15 +417,22 @@
             if (data.status === "success") {
                 currentAdminPassword = password;
                 switchTab('admin');
-            } else alert("Неверный пароль!");
-        } catch(e) { alert("Ошибка проверки пароля"); }
+            } else {
+                alert("Неверный пароль!");
+            }
+        } catch(e) {
+            alert("Ошибка проверки пароля. Проверьте консоль браузера для деталей.");
+            console.error("Ошибка в checkAdmin:", e);
+        }
     }
 
     async function fetchBookings() {
         try {
             let response = await fetch(GOOGLE_SCRIPT_URL);
             allBookingsCache = await response.json();
-        } catch (e) { console.error("Ошибка загрузки", e); }
+        } catch (e) { 
+            console.error("Ошибка загрузки броней:", e); 
+        }
     }
 
     async function loadAvailableSlots() {
@@ -485,7 +490,6 @@
         if (!date || !name) return alert("Заполните имя!");
         if (digitsOnly.length !== 11) return alert("Введите полный номер (10 цифр после +7).");
         
-        // Проверка наличия Telegram ID
         if (!tgId) {
             alert("Откройте приложение через Telegram и нажмите Start у бота, чтобы получать уведомления о бронировании.");
             return;
@@ -507,14 +511,11 @@
         };
 
         try {
-            localStorage.setItem("last_tg_id", tgId);
-
             let response = await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(bookingData)
             });
-
             let result = await response.json();
             if (result.status === "success") {
                 alert(`Успех! Твоя заявка отправлена. Ожидай подтверждения.`);
@@ -528,6 +529,7 @@
             }
         } catch (error) {
             alert("Ошибка при отправке.");
+            console.error("Ошибка в submitBooking:", error);
         } finally {
             btn.disabled = false;
             btn.innerText = "проверить дырочки";
@@ -621,7 +623,8 @@
                 alert("Ошибка обновления статуса");
             }
         } catch (e) { 
-            alert("Ошибка обновления статуса"); 
+            alert("Ошибка обновления статуса");
+            console.error("Ошибка в updateStatus:", e);
         }
     }
 
@@ -650,7 +653,8 @@
                 alert("Ошибка обновления статуса");
             }
         } catch (e) { 
-            alert("Ошибка обновления статуса"); 
+            alert("Ошибка обновления статуса");
+            console.error("Ошибка в rejectBooking:", e);
         }
     }
 </script>
