@@ -61,7 +61,6 @@
 
         select option { background: #111; color: #fff; }
 
-        /* Горизонтальная прокрутка времени */
         .time-scroll-container {
             position: relative;
             margin-bottom: 15px;
@@ -115,7 +114,6 @@
             opacity: 0.6;
         }
 
-        /* Прокрутка количества людей */
         .people-scroll-container {
             display: flex;
             align-items: center;
@@ -276,6 +274,23 @@
             font-weight: bold;
             margin-top: 4px;
         }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            z-index: 999;
+            font-size: 14px;
+            text-align: center;
+            max-width: 90%;
+            display: none;
+            border-left: 4px solid #e74c3c;
+        }
     </style>
 </head>
 <body>
@@ -313,12 +328,12 @@
             <div class="scroll-hint">← Выбери количество игроков →</div>
 
             <label>Ваше имя:</label>
-            <input type="text" id="userName" placeholder="имя магомеда" maxlength="40">
+            <input type="text" id="userName" placeholder="Ваше имя" maxlength="40">
 
             <label>Российский телефон:</label>
             <input type="tel" id="userPhone" value="+7 ">
 
-            <button class="main-btn" id="submitBtn" onclick="submitBooking()">проверить дырочки</button>
+            <button class="main-btn" id="submitBtn" onclick="submitBooking()">Забронировать</button>
         </div>
     </div>
 
@@ -329,6 +344,9 @@
         <button class="main-btn" onclick="switchTab('client')" style="background-color: #555;">Выйти</button>
     </div>
 </div>
+
+<!-- Toast для уведомлений -->
+<div id="toast" class="toast"></div>
 
 <script>
     let tg = window.Telegram.WebApp;
@@ -342,9 +360,10 @@
     let selectedPeople = 4;
     let allBookingsCache = [];
     let currentAdminPassword = "";
+    let lastSubmittedData = null;
     
     let tgUser = tg.initDataUnsafe?.user;
-    let tgId = tgUser?.id || "";
+    let tgId = tgUser?.id ? String(tgUser.id) : "";
     let tgUsername = tgUser?.username ? "@" + tgUser.username : "";
 
     if (tgUser) document.getElementById('userName').value = tgUser.first_name || '';
@@ -352,6 +371,18 @@
     
     initPeopleScroller();
     loadAvailableSlots();
+
+    // Функция показа Toast
+    function showToast(message, isSuccess = false) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.style.display = 'block';
+        toast.style.borderLeftColor = isSuccess ? '#2ecc71' : '#e74c3c';
+        clearTimeout(toast._timeout);
+        toast._timeout = setTimeout(() => {
+            toast.style.display = 'none';
+        }, 4000);
+    }
 
     function initPeopleScroller() {
         let scroller = document.getElementById('peopleScroller');
@@ -406,21 +437,31 @@
         try {
             let res = await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ action: "verifyAdmin", password: password })
             });
             let data = await res.json();
             if (data.status === "success") {
                 currentAdminPassword = password;
                 switchTab('admin');
-            } else alert("Неверный пароль!");
-        } catch(e) { alert("Ошибка проверки пароля"); }
+            } else {
+                showToast("Неверный пароль!");
+            }
+        } catch(e) { 
+            console.error("Ошибка проверки пароля:", e);
+            showToast("Ошибка проверки пароля");
+        }
     }
 
     async function fetchBookings() {
         try {
             let response = await fetch(GOOGLE_SCRIPT_URL);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             allBookingsCache = await response.json();
-        } catch (e) { console.error("Ошибка загрузки", e); }
+        } catch (e) { 
+            console.error("Ошибка загрузки", e);
+            allBookingsCache = [];
+        }
     }
 
     async function loadAvailableSlots() {
@@ -458,9 +499,9 @@
         if (firstFreeSlotIndex !== -1) {
             setTimeout(() => {
                 let slots = grid.querySelectorAll('.time-slot');
-                if (slots[firstFreeSlotIndex]) {
+                if (slots[firstFreeSlotIndex] && !slots[firstFreeSlotIndex].classList.contains('disabled')) {
                     slots[firstFreeSlotIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
-                    if (!selectedTimeSlot) {
+                    if (!selectedTimeSlot || selectedTimeSlot === "") {
                         slots[firstFreeSlotIndex].click();
                     }
                 }
@@ -473,17 +514,32 @@
         let name = document.getElementById('userName').value.trim();
         let phone = document.getElementById('userPhone').value.trim();
         let digitsOnly = phone.replace(/\D/g, '');
+        let quest = document.getElementById('questSelect').value;
 
-        if (!selectedTimeSlot) return alert("Выберите время сеанса!");
-        if (!date || !name) return alert("Заполните имя!");
-        if (digitsOnly.length !== 11) return alert("Введите полный номер (10 цифр после +7).");
+        // Валидация
+        if (!selectedTimeSlot) {
+            showToast("Выберите время сеанса!");
+            return;
+        }
+        if (!date) {
+            showToast("Выберите дату!");
+            return;
+        }
+        if (!name || name.length < 2) {
+            showToast("Введите ваше имя!");
+            return;
+        }
+        if (digitsOnly.length !== 11) {
+            showToast("Введите полный номер (10 цифр после +7)");
+            return;
+        }
 
         let btn = document.getElementById('submitBtn');
         btn.disabled = true;
         btn.innerText = "Бронируем...";
 
         let bookingData = { 
-            quest: document.getElementById('questSelect').value, 
+            quest: quest, 
             date: date, 
             time: selectedTimeSlot, 
             name: name, 
@@ -493,27 +549,35 @@
             tgId: tgId
         };
 
-        try {
-            localStorage.setItem("last_tg_id", tgId);
+        lastSubmittedData = bookingData;
 
-            await fetch(GOOGLE_SCRIPT_URL, {
+        try {
+            let response = await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
-                mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(bookingData)
             });
 
-            alert(`Успех! Твоя заявка отправлена. Ожидай подтверждения.`);
-            document.getElementById('userPhone').value = '+7 ';
-            selectedTimeSlot = "";
-            selectedPeople = 4;
-            initPeopleScroller();
-            loadAvailableSlots();
+            // Убираем no-cors и читаем ответ
+            let result = await response.json();
+            
+            if (result.status === "success") {
+                showToast("✅ Заявка отправлена! Ожидайте подтверждения.", true);
+                // Сброс формы
+                document.getElementById('userPhone').value = '+7 ';
+                selectedTimeSlot = "";
+                selectedPeople = 4;
+                initPeopleScroller();
+                loadAvailableSlots();
+            } else {
+                showToast("❌ Ошибка: " + (result.message || "Неизвестная ошибка"));
+            }
         } catch (error) {
-            alert("Ошибка при отправке.");
+            console.error("Ошибка при отправке:", error);
+            showToast("❌ Ошибка при отправке. Проверьте интернет-соединение.");
         } finally {
             btn.disabled = false;
-            btn.innerText = "проверить дырочки";
+            btn.innerText = "Забронировать";
         }
     }
 
@@ -527,24 +591,32 @@
             return;
         }
 
-        let pendingBookings = allBookingsCache.filter(b => b.status === "Ожидает");
+        // Сортировка: сначала новые (по id)
+        let sorted = [...allBookingsCache].reverse();
+
+        // Подсчет конфликтов для ожидающих
+        let pendingBookings = sorted.filter(b => b.status === "Ожидает");
         let conflicts = {};
         pendingBookings.forEach(b => {
             let key = `${b.date}_${b.time}`;
-            if (!conflicts[key]) conflicts[key] = 0;
-            conflicts[key]++;
+            if (!conflicts[key]) conflicts[key] = [];
+            conflicts[key].push(b.id);
         });
 
         let html = "";
-        allBookingsCache.reverse().forEach((b) => {
+        sorted.forEach((b) => {
             let statusClass = b.status === "Подтверждено" ? "approved" : (b.status === "Отклонено" ? "rejected" : "");
             
             let isConflict = false;
-            if (b.status === "Ожидает" && conflicts[`${b.date}_${b.time}`] > 1) {
-                isConflict = true;
-                statusClass += " conflict";
+            if (b.status === "Ожидает") {
+                let key = `${b.date}_${b.time}`;
+                if (conflicts[key] && conflicts[key].length > 1) {
+                    isConflict = true;
+                    statusClass += " conflict";
+                }
             }
 
+            // Контактная кнопка
             let contactBtn = "Нет данных";
             let contactStr = b.tgContact || "";
             
@@ -557,20 +629,26 @@
             } else if (contactStr.includes("ID:")) {
                 let idNum = contactStr.replace("ID:", "").trim();
                 contactBtn = `<a href="tg://user?id=${idNum}" target="_blank" class="btn-tg-contact">💬 Открыть чат (ID: ${idNum})</a>`;
+            } else if (b.tgId && b.tgId.length > 0) {
+                contactBtn = `<a href="tg://user?id=${b.tgId}" target="_blank" class="btn-tg-contact">💬 Открыть чат</a>`;
             }
+
+            // Статус на русском
+            let statusText = b.status || "Ожидает";
+            let statusEmoji = statusText === "Подтверждено" ? "✅" : (statusText === "Отклонено" ? "❌" : "⏳");
 
             html += `
                 <div class="booking-item ${statusClass}">
                     ${isConflict ? '<div class="conflict-badge">⚠️ Совпадение по времени</div>' : ''}
-                    <b>${b.quest}</b> [${b.status}]<br>
+                    <b>${b.quest || "Не указан"}</b> ${statusEmoji} [${statusText}]<br>
                     📅 <b>${b.date} в ${b.time}</b><br>
-                    👥 Игроков: ${b.people} чел.<br>
-                    👤 ${b.name} (${b.phone})<br>
+                    👥 Игроков: ${b.people || "?"} чел.<br>
+                    👤 ${b.name || "Без имени"} (${b.phone || "без телефона"})<br>
                     🔗 ${contactBtn}<br>
                     ${b.status === "Ожидает" ? `
                         <div class="admin-actions">
-                            <button class="btn-approve" onclick="updateStatus('${b.id}', '${b.tgId}')">✅ Принять</button>
-                            <button class="btn-reject" onclick="updateStatus('${b.id}', '')">❌ Отклонить</button>
+                            <button class="btn-approve" onclick="updateStatus('${b.id}', '${b.tgId || ''}')">✅ Принять</button>
+                            <button class="btn-reject" onclick="updateStatusReject('${b.id}')">❌ Отклонить</button>
                         </div>
                     ` : ''}
                 </div>
@@ -580,25 +658,67 @@
     }
 
     async function updateStatus(bookingId, tgId) {
-        let newStatus = "Подтверждено";
-        let clientTgId = tgId || "";
-
+        if (!currentAdminPassword) {
+            showToast("Сначала войдите как администратор");
+            return;
+        }
+        
         try {
-            await fetch(GOOGLE_SCRIPT_URL, {
+            let response = await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
-                mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
                     action: "updateStatus", 
                     bookingId: bookingId, 
                     newStatus: "Подтверждено", 
-                    clientTgId: clientTgId,
+                    clientTgId: tgId || "",
                     password: currentAdminPassword 
                 })
             });
-            alert(`Заявка принята! Бот отправил клиенту подтверждение и правила квеста.`);
-            loadAdminData(); 
-        } catch (e) { alert("Ошибка обновления статуса"); }
+            
+            let result = await response.json();
+            if (result.status === "success") {
+                showToast("✅ Заявка принята! Клиент получит уведомление.", true);
+                loadAdminData();
+            } else {
+                showToast("❌ Ошибка: " + (result.message || "Не удалось обновить статус"));
+            }
+        } catch (e) { 
+            console.error("Ошибка обновления статуса:", e);
+            showToast("❌ Ошибка при обновлении");
+        }
+    }
+
+    async function updateStatusReject(bookingId) {
+        if (!currentAdminPassword) {
+            showToast("Сначала войдите как администратор");
+            return;
+        }
+        
+        try {
+            let response = await fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    action: "updateStatus", 
+                    bookingId: bookingId, 
+                    newStatus: "Отклонено", 
+                    clientTgId: "",
+                    password: currentAdminPassword 
+                })
+            });
+            
+            let result = await response.json();
+            if (result.status === "success") {
+                showToast("✅ Заявка отклонена", true);
+                loadAdminData();
+            } else {
+                showToast("❌ Ошибка: " + (result.message || "Не удалось обновить статус"));
+            }
+        } catch (e) { 
+            console.error("Ошибка обновления статуса:", e);
+            showToast("❌ Ошибка при обновлении");
+        }
     }
 </script>
 </body>
