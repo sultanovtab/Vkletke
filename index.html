@@ -6,7 +6,6 @@
     <title>Бронирование квестов</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* Все стили оставлены без изменений из вашего файла */
         html, body {
             background-color: #000000;
             margin: 0;
@@ -410,7 +409,7 @@
         try {
             let res = await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "text/plain;charset=UTF-8" },
                 body: JSON.stringify({ action: "verifyAdmin", password: password })
             });
             let data = await res.json();
@@ -421,7 +420,7 @@
                 alert("Неверный пароль!");
             }
         } catch(e) {
-            alert("Ошибка проверки пароля. Проверьте консоль браузера для деталей.");
+            alert("Ошибка проверки пароля. Смотри консоль.");
             console.error("Ошибка в checkAdmin:", e);
         }
     }
@@ -513,7 +512,7 @@
         try {
             let response = await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "text/plain;charset=UTF-8" },
                 body: JSON.stringify(bookingData)
             });
             let result = await response.json();
@@ -607,7 +606,7 @@
         try {
             let response = await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "text/plain;charset=UTF-8" },
                 body: JSON.stringify({ 
                     action: "updateStatus", 
                     bookingId: bookingId, 
@@ -637,7 +636,7 @@
         try {
             let response = await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "text/plain;charset=UTF-8" },
                 body: JSON.stringify({ 
                     action: "updateStatus", 
                     bookingId: bookingId, 
