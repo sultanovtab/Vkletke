@@ -61,6 +61,7 @@
 
         select option { background: #111; color: #fff; }
 
+        /* Горизонтальная прокрутка времени */
         .time-scroll-container {
             position: relative;
             margin-bottom: 15px;
@@ -114,6 +115,7 @@
             opacity: 0.6;
         }
 
+        /* Прокрутка количества людей */
         .people-scroll-container {
             display: flex;
             align-items: center;
@@ -329,13 +331,8 @@
 </div>
 
 <script>
-    let tg = window.Telegram?.WebApp;
-    if (!tg) {
-        alert("Пожалуйста, откройте приложение через Telegram.");
-        document.getElementById('submitBtn').disabled = true;
-    } else {
-        tg.expand();
-    }
+    let tg = window.Telegram.WebApp;
+    tg.expand();
 
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygoXVdarlwZaf7bXb4jZPmZmSAUNVRXLHL6s1lNJeG3mzkGJLNJMNFF9Raw5iXwJ4I/exec";
     const ALL_SLOTS = ["12:00", "13:30", "15:00", "16:30", "18:00", "19:30", "21:00"];
@@ -346,8 +343,8 @@
     let allBookingsCache = [];
     let currentAdminPassword = "";
     
-    let tgUser = tg?.initDataUnsafe?.user;
-    let tgId = tgUser?.id ? String(tgUser.id) : "";
+    let tgUser = tg.initDataUnsafe?.user;
+    let tgId = tgUser?.id || "";
     let tgUsername = tgUser?.username ? "@" + tgUser.username : "";
 
     if (tgUser) document.getElementById('userName').value = tgUser.first_name || '';
@@ -409,29 +406,21 @@
         try {
             let res = await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
-                headers: { "Content-Type": "text/plain;charset=UTF-8" },
                 body: JSON.stringify({ action: "verifyAdmin", password: password })
             });
             let data = await res.json();
             if (data.status === "success") {
                 currentAdminPassword = password;
                 switchTab('admin');
-            } else {
-                alert("Неверный пароль!");
-            }
-        } catch(e) {
-            alert("Ошибка проверки пароля. Смотри консоль.");
-            console.error("Ошибка в checkAdmin:", e);
-        }
+            } else alert("Неверный пароль!");
+        } catch(e) { alert("Ошибка проверки пароля"); }
     }
 
     async function fetchBookings() {
         try {
             let response = await fetch(GOOGLE_SCRIPT_URL);
             allBookingsCache = await response.json();
-        } catch (e) { 
-            console.error("Ошибка загрузки броней:", e); 
-        }
+        } catch (e) { console.error("Ошибка загрузки", e); }
     }
 
     async function loadAvailableSlots() {
@@ -488,11 +477,6 @@
         if (!selectedTimeSlot) return alert("Выберите время сеанса!");
         if (!date || !name) return alert("Заполните имя!");
         if (digitsOnly.length !== 11) return alert("Введите полный номер (10 цифр после +7).");
-        
-        if (!tgId) {
-            alert("Откройте приложение через Telegram и нажмите Start у бота, чтобы получать уведомления о бронировании.");
-            return;
-        }
 
         let btn = document.getElementById('submitBtn');
         btn.disabled = true;
@@ -510,25 +494,23 @@
         };
 
         try {
-            let response = await fetch(GOOGLE_SCRIPT_URL, {
+            localStorage.setItem("last_tg_id", tgId);
+
+            await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
-                headers: { "Content-Type": "text/plain;charset=UTF-8" },
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(bookingData)
             });
-            let result = await response.json();
-            if (result.status === "success") {
-                alert(`Успех! Твоя заявка отправлена. Ожидай подтверждения.`);
-                document.getElementById('userPhone').value = '+7 ';
-                selectedTimeSlot = "";
-                selectedPeople = 4;
-                initPeopleScroller();
-                loadAvailableSlots();
-            } else {
-                alert("Ошибка при отправке: " + (result.message || "неизвестная ошибка"));
-            }
+
+            alert(`Успех! Твоя заявка отправлена. Ожидай подтверждения.`);
+            document.getElementById('userPhone').value = '+7 ';
+            selectedTimeSlot = "";
+            selectedPeople = 4;
+            initPeopleScroller();
+            loadAvailableSlots();
         } catch (error) {
             alert("Ошибка при отправке.");
-            console.error("Ошибка в submitBooking:", error);
         } finally {
             btn.disabled = false;
             btn.innerText = "проверить дырочки";
@@ -587,8 +569,8 @@
                     🔗 ${contactBtn}<br>
                     ${b.status === "Ожидает" ? `
                         <div class="admin-actions">
-                            <button class="btn-approve" onclick="updateStatus('${b.id}')">✅ Принять</button>
-                            <button class="btn-reject" onclick="rejectBooking('${b.id}')">❌ Отклонить</button>
+                            <button class="btn-approve" onclick="updateStatus('${b.id}', '${b.tgId}')">✅ Принять</button>
+                            <button class="btn-reject" onclick="updateStatus('${b.id}', '')">❌ Отклонить</button>
                         </div>
                     ` : ''}
                 </div>
@@ -597,64 +579,26 @@
         listDiv.innerHTML = html;
     }
 
-    async function updateStatus(bookingId) {
-        if (!currentAdminPassword) {
-            alert("Пароль администратора не установлен. Перезайдите в админку.");
-            return;
-        }
+    async function updateStatus(bookingId, tgId) {
+        let newStatus = "Подтверждено";
+        let clientTgId = tgId || "";
 
         try {
-            let response = await fetch(GOOGLE_SCRIPT_URL, {
+            await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
-                headers: { "Content-Type": "text/plain;charset=UTF-8" },
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
                     action: "updateStatus", 
                     bookingId: bookingId, 
                     newStatus: "Подтверждено", 
+                    clientTgId: clientTgId,
                     password: currentAdminPassword 
                 })
             });
-            let data = await response.json();
-            if (data.status === "success") {
-                alert("Заявка принята! Бот отправил клиенту подтверждение и правила квеста.");
-                loadAdminData();
-            } else {
-                alert("Ошибка обновления статуса");
-            }
-        } catch (e) { 
-            alert("Ошибка обновления статуса");
-            console.error("Ошибка в updateStatus:", e);
-        }
-    }
-
-    async function rejectBooking(bookingId) {
-        if (!currentAdminPassword) {
-            alert("Пароль администратора не установлен. Перезайдите в админку.");
-            return;
-        }
-
-        try {
-            let response = await fetch(GOOGLE_SCRIPT_URL, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain;charset=UTF-8" },
-                body: JSON.stringify({ 
-                    action: "updateStatus", 
-                    bookingId: bookingId, 
-                    newStatus: "Отклонено", 
-                    password: currentAdminPassword 
-                })
-            });
-            let data = await response.json();
-            if (data.status === "success") {
-                alert("Заявка отклонена.");
-                loadAdminData();
-            } else {
-                alert("Ошибка обновления статуса");
-            }
-        } catch (e) { 
-            alert("Ошибка обновления статуса");
-            console.error("Ошибка в rejectBooking:", e);
-        }
+            alert(`Заявка принята! Бот отправил клиенту подтверждение и правила квеста.`);
+            loadAdminData(); 
+        } catch (e) { alert("Ошибка обновления статуса"); }
     }
 </script>
 </body>
