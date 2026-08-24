@@ -76,7 +76,6 @@
             padding: 8px 0;
             scroll-snap-type: x mandatory;
             -webkit-overflow-scrolling: touch;
-            /* Скрыть скроллбар для мобильных */
             scrollbar-width: none;
         }
 
@@ -162,7 +161,6 @@
             transform: scale(0.95);
         }
 
-        /* Инструкция для прокрутки */
         .scroll-hint {
             font-size: 11px;
             color: #888;
@@ -457,13 +455,11 @@
             grid.appendChild(div);
         });
 
-        // Автоскролл к первому свободному слоту
         if (firstFreeSlotIndex !== -1) {
             setTimeout(() => {
                 let slots = grid.querySelectorAll('.time-slot');
                 if (slots[firstFreeSlotIndex]) {
                     slots[firstFreeSlotIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
-                    // Выбираем первый свободный автоматически
                     if (!selectedTimeSlot) {
                         slots[firstFreeSlotIndex].click();
                     }
@@ -573,7 +569,7 @@
                     🔗 ${contactBtn}<br>
                     ${b.status === "Ожидает" ? `
                         <div class="admin-actions">
-                            <button class="btn-approve" onclick="updateStatus('${b.id}', '${b.tgContact}')">✅ Принять</button>
+                            <button class="btn-approve" onclick="updateStatus('${b.id}', '${b.tgId}')">✅ Принять</button>
                             <button class="btn-reject" onclick="updateStatus('${b.id}', '')">❌ Отклонить</button>
                         </div>
                     ` : ''}
@@ -583,17 +579,9 @@
         listDiv.innerHTML = html;
     }
 
-    async function updateStatus(bookingId, tgContactInfo) {
+    async function updateStatus(bookingId, tgId) {
         let newStatus = "Подтверждено";
-        let clientTgId = "";
-        if (tgContactInfo) {
-            if (tgContactInfo.includes("ID:")) {
-                clientTgId = tgContactInfo.replace("ID:", "").trim();
-            } else if (tgContactInfo.includes("t.me/")) {
-                let match = tgContactInfo.match(/t\.me\/([^"]+)/);
-                if (match) clientTgId = "@" + match[1];
-            }
-        }
+        let clientTgId = tgId || "";
 
         try {
             await fetch(GOOGLE_SCRIPT_URL, {
