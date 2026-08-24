@@ -142,7 +142,6 @@
     let tg = window.Telegram.WebApp;
     tg.expand();
 
-    // ВАЖНО: Убедись, что тут актуальная ссылка на твой скрипт
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygoXVdarlwZaf7bXb4jZPmZmSAUNVRXLHL6s1lNJeG3mzkGJLNJMNFF9Raw5iXwJ4I/exec";
     const ALL_SLOTS = ["12:00", "13:30", "15:00", "16:30", "18:00", "19:30", "21:00"];
     
@@ -150,38 +149,26 @@
     let allBookingsCache = [];
     let currentAdminPassword = "";
     
-    // Получаем Telegram данные
+    // Данные Telegram
     let tgUser = tg.initDataUnsafe?.user;
     let tgId = tgUser?.id || "";
     let tgUsername = tgUser?.username ? "@" + tgUser.username : "";
-    let tgProfileLink = tgUsername ? `https://t.me/${tgUser.username}` : (tgId ? `tg://user?id=${tgId}` : "Нет данных");
 
     if (tgUser) document.getElementById('userName').value = tgUser.first_name || '';
     document.getElementById('bookDate').valueAsDate = new Date();
     loadAvailableSlots();
 
-    // ==========================================
-    // ЛОГИКА ЖЕСТКОЙ МАСКИ ТЕЛЕФОНА (+7)
-    // ==========================================
+    // МАСКА ТЕЛЕФОНА +7
     const phoneInput = document.getElementById('userPhone');
-    
     phoneInput.addEventListener('input', function(e) {
         let input = this.value;
-        // Оставляем только цифры
         let numbers = input.replace(/\D/g, '');
-        
-        // Если поле пустое, насильно ставим 7
         if (numbers.length === 0) numbers = '7';
-        
-        // Заменяем первую 8 на 7, если кто-то начал вводить с восьмерки
         if (numbers.length === 1 && numbers[0] === '8') numbers = '7';
-        // Если кто-то умудрился вставить номер без 7, добавляем её
         else if (numbers[0] !== '7') numbers = '7' + numbers;
 
-        // Ограничиваем длину (1 цифра кода страны + 10 цифр номера = 11)
         numbers = numbers.substring(0, 11);
 
-        // Форматируем +7 (XXX) XXX-XX-XX
         let formatted = '+7 ';
         if (numbers.length > 1) formatted += '(' + numbers.substring(1, 4);
         if (numbers.length > 4) formatted += ') ' + numbers.substring(4, 7);
@@ -191,13 +178,11 @@
         this.value = formatted;
     });
 
-    // Запрещаем пользователю стирать первые 3 символа ("+7 ")
     phoneInput.addEventListener('keydown', function(e) {
         if (e.key === 'Backspace' && this.value.length <= 3) {
             e.preventDefault();
         }
     });
-    // ==========================================
 
     function switchTab(role) {
         if (role === 'client') {
@@ -263,20 +248,15 @@
         });
     }
 
-    // --- ПРЯМАЯ ОТПРАВКА БРОНИ (Без подтверждения) ---
     async function submitBooking() {
         let date = document.getElementById('bookDate').value;
         let name = document.getElementById('userName').value.trim();
         let phone = document.getElementById('userPhone').value.trim();
-        let digitsOnly = phone.replace(/\D/g, ''); // считаем чистые цифры
+        let digitsOnly = phone.replace(/\D/g, '');
 
         if (!selectedTimeSlot) return alert("Выберите время сеанса!");
         if (!date || !name) return alert("Заполните имя!");
-        
-        // Проверка: номер должен состоять ровно из 11 цифр (7 + 10 цифр номера)
-        if (digitsOnly.length !== 11) {
-            return alert("Пожалуйста, введите полный номер телефона (10 цифр после +7).");
-        }
+        if (digitsOnly.length !== 11) return alert("Введите полный номер (10 цифр после +7).");
 
         let btn = document.getElementById('submitBtn');
         btn.disabled = true;
@@ -289,7 +269,8 @@
             name: name, 
             phone: phone,
             people: document.getElementById('peopleCount').value,
-            tgProfile: tgProfileLink
+            tgUsername: tgUsername,
+            tgId: tgId
         };
 
         try {
@@ -301,8 +282,6 @@
             });
 
             alert(`Успех! Твоя заявка отправлена. Ожидай подтверждения.`);
-            
-            // Сброс формы после успеха
             document.getElementById('userPhone').value = '+7 ';
             selectedTimeSlot = "";
             loadAvailableSlots();
@@ -314,7 +293,6 @@
         }
     }
 
-    // --- ПАНЕЛЬ АДМИНА ---
     async function loadAdminData() {
         let listDiv = document.getElementById('adminBookingsList');
         listDiv.innerHTML = "Загрузка заявок...";
@@ -328,7 +306,7 @@
         let html = "";
         allBookingsCache.reverse().forEach((b) => {
             let statusClass = b.status === "Подтверждено" ? "approved" : (b.status === "Отклонено" ? "rejected" : "");
-            let tgHtml = b.tgUser && b.tgUser.length > 5 ? `<a href="${b.tgUser}" target="_blank" style="color: #3498db; text-decoration: underline;">Перейти в TG</a>` : 'Нет TG';
+            let tgHtml = b.tgUser && b.tgUser.startsWith('http') ? `<a href="${b.tgUser}" target="_blank" style="color: #3498db; text-decoration: underline;">Перейти в TG</a>` : (b.tgUser || 'Нет TG');
 
             html += `
                 <div class="booking-item ${statusClass}">
