@@ -1,51 +1,69 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Бронирование квестов</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body {
+        html, body {
+            background-color: #000000; /* Чёрный цвет за фоном, никакого белого */
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100vh;
+            overflow-x: hidden;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            /* Ссылка на фон + легкое затемнение, чтобы текст был читаемым */
-            background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://raw.githubusercontent.com/sultanovtab/Vkletke/refs/heads/main/photo_2026-08-23_15-34-07.jpg');
+            color: #ffffff;
+        }
+
+        body {
+            /* Фиксированный фон на весь экран без вылетов */
+            background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)), url('https://raw.githubusercontent.com/sultanovtab/Vkletke/refs/heads/main/photo_2026-08-23_15-34-07.jpg');
             background-size: cover;
             background-position: center;
-            background-attachment: fixed;
-            color: #ffffff;
+            background-repeat: no-repeat;
+            box-sizing: border-box;
             padding: 16px;
-            margin: 0;
-            min-height: 100vh;
         }
-        .container { max-width: 400px; margin: auto; }
+
+        .container { 
+            max-width: 400px; 
+            margin: auto; 
+        }
+
         .card {
-            background: rgba(30, 30, 30, 0.85); /* Полупрозрачный темный блок */
-            backdrop-filter: blur(5px);
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             padding: 20px;
             border-radius: 16px;
             margin-bottom: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
+
         h2 { font-size: 20px; margin-top: 0; text-align: center; color: #fff; }
-        label { font-size: 14px; color: #ddd; }
+        label { font-size: 14px; color: #ddd; display: block; margin-top: 8px; }
+        
         select, input {
             width: 100%;
             padding: 12px;
             margin-top: 6px;
-            margin-bottom: 14px;
+            margin-bottom: 10px;
             border-radius: 10px;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(20, 20, 20, 0.9);
+            background: rgba(10, 10, 10, 0.9);
             color: #fff;
             box-sizing: border-box;
             font-size: 15px;
+            outline: none;
         }
-        select option { background: #222; color: #fff; }
+
+        select option { background: #111; color: #fff; }
+
         button {
-            background-color: #e74c3c; /* Красная кнопка в стиле хоррор/квеста */
+            background-color: #e74c3c;
             color: #ffffff;
             border: none;
             padding: 14px;
@@ -54,19 +72,23 @@
             border-radius: 10px;
             cursor: pointer;
             font-weight: bold;
+            margin-top: 10px;
             transition: opacity 0.2s;
         }
+
         button:active { opacity: 0.8; }
+
         .admin-panel { 
             display: none; 
-            background: rgba(30, 30, 30, 0.95);
+            background: rgba(20, 20, 20, 0.95);
             border: 2px dashed #e74c3c; 
             padding: 15px; 
             margin-top: 20px; 
             border-radius: 16px; 
         }
+
         .tab-bar { display: flex; justify-content: space-between; margin-bottom: 15px; }
-        .tab-bar button { background: rgba(50, 50, 50, 0.8); width: 48%; padding: 10px; font-size: 14px; }
+        .tab-bar button { background: rgba(50, 50, 50, 0.8); width: 48%; padding: 10px; font-size: 14px; margin-top: 0; }
     </style>
 </head>
 <body>
@@ -80,11 +102,11 @@
     <!-- КЛИЕНТСКАЯ ЧАСТЬ -->
     <div id="clientView">
         <div class="card">
-            <h2> Квест «славянка В Клетке с мигрантом»</h2>
+            <h2>Квест «славянка В Клетке с мигрантом»</h2>
             
             <label>Выбери квест:</label>
             <select id="questSelect">
-                <option value="В Клетке (Основной)">каннибал</option>
+                <option value="каннибал">каннибал</option>
                 <option value="Хардкор режим">Хардкор режим</option>
             </select>
 
@@ -105,7 +127,7 @@
             <label>Телефон:</label>
             <input type="tel" id="userPhone" placeholder="напиши номер мигрантик">
 
-            <button onclick="makeBooking()">Забронировать слот</button>
+            <button id="submitBtn" onclick="makeBooking()">Забронировать слот</button>
         </div>
     </div>
 
@@ -113,10 +135,10 @@
     <div id="adminView" class="admin-panel">
         <h2>Панель администратора</h2>
         <p style="font-size: 14px; color: #ccc;">Активные бронирования из таблицы:</p>
-        <div id="adminBookingsList" style="font-size: 14px; background: rgba(15, 15, 15, 0.9); color: #fff; padding: 10px; border-radius: 8px; max-height: 300px; overflow-y: auto;">
+        <div id="adminBookingsList" style="font-size: 14px; background: rgba(10, 10, 10, 0.9); color: #fff; padding: 10px; border-radius: 8px; max-height: 300px; overflow-y: auto;">
             Загрузка броней...
         </div>
-        <button onclick="switchTab('client')" style="margin-top: 15px; background-color: #555;">Выйти из админки</button>
+        <button onclick="switchTab('client')" style="background-color: #555;">Выйти из админки</button>
     </div>
 </div>
 
@@ -124,8 +146,8 @@
     let tg = window.Telegram.WebApp;
     tg.expand();
 
-    // ⚠️ ВСТАВЬ СВОЮ ССЫЛКУ ИЗ GOOGLE APPS SCRIPT ВМЕСТО ЭТОГО ТЕКСТА (/exec)
-    const GOOGLE_SCRIPT_URL = "/https://script.google.com/macros/s/AKfycbygoXVdarlwZaf7bXb4jZPmZmSAUNVRXLHL6s1lNJeG3mzkGJLNJMNFF9Raw5iXwJ4I/exec";
+    // Чистая ссылка без лишних слэшей
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygoXVdarlwZaf7bXb4jZPmZmSAUNVRXLHL6s1lNJeG3mzkGJLNJMNFF9Raw5iXwJ4I/exec";
 
     if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
         document.getElementById('userName').value = tg.initDataUnsafe.user.first_name || '';
@@ -157,16 +179,20 @@
         let time = document.getElementById('timeSelect').value;
         let name = document.getElementById('userName').value;
         let phone = document.getElementById('userPhone').value;
+        let btn = document.getElementById('submitBtn');
 
         if (!date || !name || !phone) {
             alert("Пожалуйста, заполните все поля!");
             return;
         }
 
+        btn.disabled = true;
+        btn.innerText = "Отправка...";
+
         let bookingData = { quest, date, time, name, phone };
 
         try {
-            let response = await fetch(GOOGLE_SCRIPT_URL, {
+            await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
                 mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
@@ -175,10 +201,13 @@
 
             alert(`Спасибо, ${name}! Квест успешно забронирован.`);
             document.getElementById('bookDate').value = '';
-            document.getElementById('userPhone', '').value = '';
+            document.getElementById('userPhone').value = '';
         } catch (error) {
             alert("Ошибка при бронировании. Проверьте интернет.");
             console.error(error);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Забронировать слот";
         }
     }
 
@@ -190,7 +219,7 @@
             let response = await fetch(GOOGLE_SCRIPT_URL);
             let bookings = await response.json();
             
-            if (bookings.length === 0) {
+            if (!bookings || bookings.length === 0) {
                 listDiv.innerHTML = "Пока нет бронирований в таблице.";
                 return;
             }
@@ -201,7 +230,7 @@
             });
             listDiv.innerHTML = html;
         } catch (error) {
-            listDiv.innerHTML = "Ошибка загрузки данных.";
+            listDiv.innerHTML = "Ошибка загрузки данных. Проверьте развертывание скрипта.";
             console.error(error);
         }
     }
