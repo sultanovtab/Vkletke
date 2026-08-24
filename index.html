@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -56,8 +55,7 @@
             outline: none;
         }
 
-        /* Уменьшенный компактный размер для поля с датой */
-        input[type="date"] {
+        input[type="date"], input[type="number"] {
             width: auto;
             max-width: 170px;
             display: block;
@@ -65,87 +63,43 @@
 
         select option { background: #111; color: #fff; }
 
-        /* Сетка времени (слотов) */
-        .time-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-bottom: 15px;
-        }
-
+        .time-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
+        
         .time-slot {
-            background: rgba(40, 40, 40, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 10px 0;
-            text-align: center;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 14px;
-            transition: all 0.2s;
+            background: rgba(40, 40, 40, 0.8); border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 0; text-align: center; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; transition: all 0.2s;
         }
-
-        .time-slot.selected {
-            background: #e74c3c;
-            border-color: #ff6b6b;
-            color: #fff;
-        }
-
-        .time-slot.disabled {
-            background: rgba(20, 20, 20, 0.5);
-            color: #666;
-            border-color: rgba(255, 255, 255, 0.05);
-            text-decoration: line-through;
-            cursor: not-allowed;
-        }
+        .time-slot.selected { background: #e74c3c; border-color: #ff6b6b; color: #fff; }
+        .time-slot.disabled { background: rgba(20, 20, 20, 0.5); color: #666; border-color: rgba(255, 255, 255, 0.05); text-decoration: line-through; cursor: not-allowed; }
 
         button.main-btn {
-            background-color: #e74c3c;
-            color: #ffffff;
-            border: none;
-            padding: 14px;
-            width: 100%;
-            font-size: 16px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-top: 10px;
-            transition: opacity 0.2s;
+            background-color: #e74c3c; color: #ffffff; border: none; padding: 14px; width: 100%;
+            font-size: 16px; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: opacity 0.2s;
         }
-
         button:active { opacity: 0.8; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .admin-panel { 
-            display: none; 
-            background: rgba(20, 20, 20, 0.95);
-            border: 2px dashed #e74c3c; 
-            padding: 15px; 
-            margin-top: 20px; 
-            border-radius: 16px; 
-        }
-
+        .admin-panel { display: none; background: rgba(20, 20, 20, 0.95); border: 2px dashed #e74c3c; padding: 15px; margin-top: 20px; border-radius: 16px; }
         .tab-bar { display: flex; justify-content: space-between; margin-bottom: 15px; }
         .tab-bar button { background: rgba(50, 50, 50, 0.8); width: 48%; padding: 10px; font-size: 14px; margin-top: 0; border: none; color: white; border-radius: 8px; cursor: pointer; }
 
-        .booking-item {
-            background: rgba(10, 10, 10, 0.9);
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border-left: 4px solid #f39c12;
-        }
+        .booking-item { background: rgba(10, 10, 10, 0.9); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #f39c12; }
         .booking-item.approved { border-left-color: #2ecc71; }
         .booking-item.rejected { border-left-color: #e74c3c; }
-
-        .admin-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
+        
+        .admin-actions { display: flex; gap: 8px; margin-top: 8px; }
         .btn-approve { background: #2ecc71; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn-reject { background: #e74c3c; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        #otpSection {
+            display: none;
+            background: rgba(40, 40, 40, 0.9);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #e74c3c;
+            margin-top: 15px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -158,41 +112,48 @@
 
     <!-- КЛИЕНТСКАЯ ЧАСТЬ -->
     <div id="clientView">
-        <div class="card">
+        <div class="card" id="mainForm">
             <h2>Квест «В Клетке»</h2>
             
             <label>Выбери режим квеста:</label>
             <select id="questSelect">
-                <option value="Каннибал">славянская оргия</option>
+                <option value="славянская оргия">славянская оргия</option>
                 <option value="восточный хардкор">восточный хардкор</option>
             </select>
 
             <label>Дата:</label>
             <input type="date" id="bookDate" onchange="loadAvailableSlots()">
 
-            <label>Свободные сеансы (нажмите для выбора):</label>
-            <div class="time-grid" id="timeGrid">
-                <!-- Слоты закроются или откроются автоматически -->
-            </div>
+            <label>Свободные сеансы:</label>
+            <div class="time-grid" id="timeGrid"></div>
+
+            <label>Количество человек:</label>
+            <input type="number" id="peopleCount" min="2" max="10" value="4" placeholder="Например, 4">
 
             <label>Ваше имя:</label>
             <input type="text" id="userName" placeholder="имя магомеда" maxlength="40">
 
-            <label>Телефон:</label>
-            <input type="tel" id="userPhone" placeholder="телефон мухаммеда" maxlength="20">
+            <label>Телефон (укажите реальный):</label>
+            <input type="tel" id="userPhone" placeholder="+7..." maxlength="20">
 
-            <button class="main-btn" id="submitBtn" onclick="makeBooking()">проверить дырочки</button>
+            <button class="main-btn" id="submitBtn" onclick="requestOtpCode()">проверить дырочки</button>
+
+            <!-- БЛОК ВВОДА КОДА (Скрыт по умолчанию) -->
+            <div id="otpSection">
+                <h3 style="margin-top:0; font-size: 16px;">Подтверждение номера</h3>
+                <p style="font-size: 13px; color: #ccc;">Бот прислал тебе в этот чат 4-значный код. Введи его ниже:</p>
+                <input type="text" id="otpCode" placeholder="Код из 4 цифр" maxlength="4" style="text-align: center; letter-spacing: 5px; font-size: 20px;">
+                <button class="main-btn" id="verifyBtn" onclick="verifyAndBook()" style="background-color: #2ecc71;">Подтвердить заявку</button>
+                <button class="main-btn" onclick="cancelOtp()" style="background-color: #555; margin-top: 5px;">Отмена</button>
+            </div>
         </div>
     </div>
 
     <!-- ПАНЕЛЬ АДМИНИСТРАТОРА -->
     <div id="adminView" class="admin-panel">
         <h2>Панель администратора</h2>
-        <p style="font-size: 14px; color: #ccc;">Управление заявками:</p>
-        <div id="adminBookingsList" style="font-size: 14px; max-height: 400px; overflow-y: auto;">
-            Загрузка броней...
-        </div>
-        <button class="main-btn" onclick="switchTab('client')" style="background-color: #555;">Выйти из админки</button>
+        <div id="adminBookingsList" style="font-size: 14px; max-height: 500px; overflow-y: auto;">Загрузка броней...</div>
+        <button class="main-btn" onclick="switchTab('client')" style="background-color: #555;">Выйти</button>
     </div>
 </div>
 
@@ -201,16 +162,21 @@
     tg.expand();
 
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygoXVdarlwZaf7bXb4jZPmZmSAUNVRXLHL6s1lNJeG3mzkGJLNJMNFF9Raw5iXwJ4I/exec";
-
     const ALL_SLOTS = ["12:00", "13:30", "15:00", "16:30", "18:00", "19:30", "21:00"];
+    
     let selectedTimeSlot = "";
     let allBookingsCache = [];
     let currentAdminPassword = "";
+    
+    // Данные юзера из Telegram
+    let tgUser = tg.initDataUnsafe?.user;
+    let tgId = tgUser?.id || "";
+    let tgUsername = tgUser?.username ? "@" + tgUser.username : "";
+    let tgProfileLink = tgUsername ? `https://t.me/${tgUser.username}` : (tgId ? `tg://user?id=${tgId}` : "Нет данных");
 
-    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-        document.getElementById('userName').value = tg.initDataUnsafe.user.first_name || '';
-    }
+    let generatedOtp = ""; // Сюда запишем код
 
+    if (tgUser) document.getElementById('userName').value = tgUser.first_name || '';
     document.getElementById('bookDate').valueAsDate = new Date();
     loadAvailableSlots();
 
@@ -228,40 +194,30 @@
     async function checkAdmin() {
         let password = prompt("Введите пароль администратора:");
         if (!password) return;
-
         try {
             let res = await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
                 body: JSON.stringify({ action: "verifyAdmin", password: password })
             });
             let data = await res.json();
-            
             if (data.status === "success") {
                 currentAdminPassword = password;
                 switchTab('admin');
-            } else {
-                alert("Неверный пароль!");
-            }
-        } catch(e) {
-            alert("Ошибка проверки пароля");
-        }
+            } else alert("Неверный пароль!");
+        } catch(e) { alert("Ошибка проверки пароля"); }
     }
 
     async function fetchBookings() {
         try {
             let response = await fetch(GOOGLE_SCRIPT_URL);
             allBookingsCache = await response.json();
-        } catch (e) {
-            console.error("Ошибка загрузки данных", e);
-        }
+        } catch (e) { console.error("Ошибка загрузки", e); }
     }
 
     async function loadAvailableSlots() {
         let grid = document.getElementById('timeGrid');
         grid.innerHTML = "<div style='grid-column: span 3; text-align: center; color: #888;'>Проверка слотов...</div>";
-
         await fetchBookings();
-
         let currentDate = document.getElementById('bookDate').value;
         grid.innerHTML = "";
 
@@ -276,56 +232,90 @@
 
             if (occupiedTimes.includes(slot)) {
                 div.classList.add('disabled');
-                div.title = "Слот занят";
             } else {
-                if (slot === selectedTimeSlot) {
-                    div.classList.add('selected');
-                }
+                if (slot === selectedTimeSlot) div.classList.add('selected');
                 div.onclick = function() {
                     document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
                     div.classList.add('selected');
                     selectedTimeSlot = slot;
                 };
             }
-
             grid.appendChild(div);
         });
     }
 
-    async function makeBooking() {
-        let quest = document.getElementById('questSelect').value;
+    // --- ЛОГИКА OTP И БРОНИРОВАНИЯ ---
+
+    async function requestOtpCode() {
+        if (!tgId) {
+            alert("Ошибка: Не удалось получить ваш Telegram ID. Откройте приложение через бота.");
+            return;
+        }
+
         let date = document.getElementById('bookDate').value;
         let name = document.getElementById('userName').value.trim();
         let phone = document.getElementById('userPhone').value.trim();
+        let people = document.getElementById('peopleCount').value;
+
+        if (!selectedTimeSlot) return alert("Выберите время сеанса!");
+        if (!date || !name || !phone) return alert("Заполните имя и телефон!");
+        if (phone.replace(/\D/g, '').length < 7) return alert("Введите настоящий номер!");
+
         let btn = document.getElementById('submitBtn');
-
-        if (!selectedTimeSlot) {
-            alert("Пожалуйста, выберите время сеанса!");
-            return;
-        }
-
-        if (!date || !name || !phone) {
-            alert("Пожалуйста, заполните имя и телефон!");
-            return;
-        }
-
-        if (name.length < 2) {
-            alert("Пожалуйста, введите корректное имя.");
-            return;
-        }
-
-        // Базовая валидация номера телефона
-        let phoneDigits = phone.replace(/\D/g, '');
-        if (phoneDigits.length < 7) {
-            alert("Пожалуйста, введите настоящий номер телефона.");
-            return;
-        }
-
-        // Блокировка от спама (Cooldown на 5 секунд)
         btn.disabled = true;
-        btn.innerText = "Отправка заявки...";
+        btn.innerText = "Отправка кода...";
 
-        let bookingData = { quest, date, time: selectedTimeSlot, name, phone };
+        // Генерируем 4 случайные цифры
+        generatedOtp = Math.floor(1000 + Math.random() * 9000).toString(); 
+
+        try {
+            // Просим скрипт отправить код в бота юзеру
+            await fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "sendOTP", tgId: tgId, code: generatedOtp })
+            });
+
+            // Показываем блок ввода кода
+            document.getElementById('otpSection').style.display = 'block';
+            document.getElementById('submitBtn').style.display = 'none';
+
+        } catch (error) {
+            alert("Ошибка сети. Попробуйте еще раз.");
+            btn.disabled = false;
+            btn.innerText = "проверить дырочки";
+        }
+    }
+
+    function cancelOtp() {
+        document.getElementById('otpSection').style.display = 'none';
+        document.getElementById('submitBtn').style.display = 'block';
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').innerText = "проверить дырочки";
+        document.getElementById('otpCode').value = '';
+    }
+
+    async function verifyAndBook() {
+        let userCode = document.getElementById('otpCode').value.trim();
+        if (userCode !== generatedOtp) {
+            alert("Неверный код! Попробуй еще раз.");
+            return;
+        }
+
+        let verifyBtn = document.getElementById('verifyBtn');
+        verifyBtn.disabled = true;
+        verifyBtn.innerText = "Бронируем...";
+
+        let bookingData = { 
+            quest: document.getElementById('questSelect').value, 
+            date: document.getElementById('bookDate').value, 
+            time: selectedTimeSlot, 
+            name: document.getElementById('userName').value.trim(), 
+            phone: document.getElementById('userPhone').value.trim(),
+            people: document.getElementById('peopleCount').value,
+            tgProfile: tgProfileLink
+        };
 
         try {
             await fetch(GOOGLE_SCRIPT_URL, {
@@ -335,25 +325,22 @@
                 body: JSON.stringify(bookingData)
             });
 
-            alert(`Заявка отправлена! Инностранный Специалист проверит и подтвердит бронь.`);
+            alert(`Успех! Твоя заявка отправлена. Ожидай подтверждения от Инностранного Специалиста.`);
+            cancelOtp();
             document.getElementById('userPhone').value = '';
             selectedTimeSlot = "";
             loadAvailableSlots();
         } catch (error) {
             alert("Ошибка при отправке.");
-            console.error(error);
-        } finally {
-            setTimeout(() => {
-                btn.disabled = false;
-                btn.innerText = "проверить дырочки";
-            }, 5000); // 5 секунд задержки перед повторной отправкой
+            verifyBtn.disabled = false;
+            verifyBtn.innerText = "Подтвердить заявку";
         }
     }
 
+    // --- ПАНЕЛЬ АДМИНА ---
     async function loadAdminData() {
         let listDiv = document.getElementById('adminBookingsList');
         listDiv.innerHTML = "Загрузка заявкок...";
-
         await fetchBookings();
         
         if (!allBookingsCache || allBookingsCache.length === 0) {
@@ -365,11 +352,16 @@
         allBookingsCache.reverse().forEach((b) => {
             let statusClass = b.status === "Подтверждено" ? "approved" : (b.status === "Отклонено" ? "rejected" : "");
             
+            // Вставляем ссылку на ТГ и кол-во человек
+            let tgHtml = b.tgUser && b.tgUser.length > 5 ? `<a href="${b.tgUser}" target="_blank" style="color: #3498db; text-decoration: underline;">Перейти в TG</a>` : 'Нет TG';
+
             html += `
                 <div class="booking-item ${statusClass}">
                     <b>${b.quest}</b> [${b.status}]<br>
                     📅 <b>${b.date} в ${b.time}</b><br>
+                    👥 Игроков: ${b.people} чел.<br>
                     👤 ${b.name} (${b.phone})<br>
+                    🔗 ${tgHtml}<br>
                     ${b.status === "Ожидает" ? `
                         <div class="admin-actions">
                             <button class="btn-approve" onclick="updateStatus('${b.id}', 'Подтверждено')">✅ Принять</button>
@@ -388,21 +380,12 @@
                 method: "POST",
                 mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ 
-                    action: "updateStatus", 
-                    bookingId: bookingId, 
-                    newStatus: newStatus,
-                    password: currentAdminPassword
-                })
+                body: JSON.stringify({ action: "updateStatus", bookingId: bookingId, newStatus: newStatus, password: currentAdminPassword })
             });
-
-            alert(`Статус брони изменен на: ${newStatus}`);
+            alert(`Статус изменен на: ${newStatus}`);
             loadAdminData();
-        } catch (e) {
-            alert("Ошибка обновления статуса");
-        }
+        } catch (e) { alert("Ошибка обновления статуса"); }
     }
 </script>
-
 </body>
 </html>
