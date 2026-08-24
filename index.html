@@ -90,16 +90,6 @@
         .admin-actions { display: flex; gap: 8px; margin-top: 8px; }
         .btn-approve { background: #2ecc71; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn-reject { background: #e74c3c; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-
-        #otpSection {
-            display: none;
-            background: rgba(40, 40, 40, 0.9);
-            padding: 15px;
-            border-radius: 12px;
-            border: 1px solid #e74c3c;
-            margin-top: 15px;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -128,24 +118,15 @@
             <div class="time-grid" id="timeGrid"></div>
 
             <label>Количество человек:</label>
-            <input type="number" id="peopleCount" min="2" max="10" value="4" placeholder="Например, 4">
+            <input type="number" id="peopleCount" min="2" max="10" value="4">
 
             <label>Ваше имя:</label>
             <input type="text" id="userName" placeholder="имя магомеда" maxlength="40">
 
-            <label>Телефон (укажите реальный):</label>
-            <input type="tel" id="userPhone" placeholder="+7..." maxlength="20">
+            <label>Российский телефон:</label>
+            <input type="tel" id="userPhone" value="+7 ">
 
-            <button class="main-btn" id="submitBtn" onclick="requestOtpCode()">проверить дырочки</button>
-
-            <!-- БЛОК ВВОДА КОДА (Скрыт по умолчанию) -->
-            <div id="otpSection">
-                <h3 style="margin-top:0; font-size: 16px;">Подтверждение номера</h3>
-                <p style="font-size: 13px; color: #ccc;">Бот прислал тебе в этот чат 4-значный код. Введи его ниже:</p>
-                <input type="text" id="otpCode" placeholder="Код из 4 цифр" maxlength="4" style="text-align: center; letter-spacing: 5px; font-size: 20px;">
-                <button class="main-btn" id="verifyBtn" onclick="verifyAndBook()" style="background-color: #2ecc71;">Подтвердить заявку</button>
-                <button class="main-btn" onclick="cancelOtp()" style="background-color: #555; margin-top: 5px;">Отмена</button>
-            </div>
+            <button class="main-btn" id="submitBtn" onclick="submitBooking()">проверить дырочки</button>
         </div>
     </div>
 
@@ -161,6 +142,7 @@
     let tg = window.Telegram.WebApp;
     tg.expand();
 
+    // ВАЖНО: Убедись, что тут актуальная ссылка на твой скрипт
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygoXVdarlwZaf7bXb4jZPmZmSAUNVRXLHL6s1lNJeG3mzkGJLNJMNFF9Raw5iXwJ4I/exec";
     const ALL_SLOTS = ["12:00", "13:30", "15:00", "16:30", "18:00", "19:30", "21:00"];
     
@@ -168,17 +150,54 @@
     let allBookingsCache = [];
     let currentAdminPassword = "";
     
-    // Данные юзера из Telegram
+    // Получаем Telegram данные
     let tgUser = tg.initDataUnsafe?.user;
     let tgId = tgUser?.id || "";
     let tgUsername = tgUser?.username ? "@" + tgUser.username : "";
     let tgProfileLink = tgUsername ? `https://t.me/${tgUser.username}` : (tgId ? `tg://user?id=${tgId}` : "Нет данных");
 
-    let generatedOtp = ""; // Сюда запишем код
-
     if (tgUser) document.getElementById('userName').value = tgUser.first_name || '';
     document.getElementById('bookDate').valueAsDate = new Date();
     loadAvailableSlots();
+
+    // ==========================================
+    // ЛОГИКА ЖЕСТКОЙ МАСКИ ТЕЛЕФОНА (+7)
+    // ==========================================
+    const phoneInput = document.getElementById('userPhone');
+    
+    phoneInput.addEventListener('input', function(e) {
+        let input = this.value;
+        // Оставляем только цифры
+        let numbers = input.replace(/\D/g, '');
+        
+        // Если поле пустое, насильно ставим 7
+        if (numbers.length === 0) numbers = '7';
+        
+        // Заменяем первую 8 на 7, если кто-то начал вводить с восьмерки
+        if (numbers.length === 1 && numbers[0] === '8') numbers = '7';
+        // Если кто-то умудрился вставить номер без 7, добавляем её
+        else if (numbers[0] !== '7') numbers = '7' + numbers;
+
+        // Ограничиваем длину (1 цифра кода страны + 10 цифр номера = 11)
+        numbers = numbers.substring(0, 11);
+
+        // Форматируем +7 (XXX) XXX-XX-XX
+        let formatted = '+7 ';
+        if (numbers.length > 1) formatted += '(' + numbers.substring(1, 4);
+        if (numbers.length > 4) formatted += ') ' + numbers.substring(4, 7);
+        if (numbers.length > 7) formatted += '-' + numbers.substring(7, 9);
+        if (numbers.length > 9) formatted += '-' + numbers.substring(9, 11);
+
+        this.value = formatted;
+    });
+
+    // Запрещаем пользователю стирать первые 3 символа ("+7 ")
+    phoneInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Backspace' && this.value.length <= 3) {
+            e.preventDefault();
+        }
+    });
+    // ==========================================
 
     function switchTab(role) {
         if (role === 'client') {
@@ -244,75 +263,31 @@
         });
     }
 
-    // --- ЛОГИКА OTP И БРОНИРОВАНИЯ ---
-
-    async function requestOtpCode() {
-        if (!tgId) {
-            alert("Ошибка: Не удалось получить ваш Telegram ID. Откройте приложение через бота.");
-            return;
-        }
-
+    // --- ПРЯМАЯ ОТПРАВКА БРОНИ (Без подтверждения) ---
+    async function submitBooking() {
         let date = document.getElementById('bookDate').value;
         let name = document.getElementById('userName').value.trim();
         let phone = document.getElementById('userPhone').value.trim();
-        let people = document.getElementById('peopleCount').value;
+        let digitsOnly = phone.replace(/\D/g, ''); // считаем чистые цифры
 
         if (!selectedTimeSlot) return alert("Выберите время сеанса!");
-        if (!date || !name || !phone) return alert("Заполните имя и телефон!");
-        if (phone.replace(/\D/g, '').length < 7) return alert("Введите настоящий номер!");
+        if (!date || !name) return alert("Заполните имя!");
+        
+        // Проверка: номер должен состоять ровно из 11 цифр (7 + 10 цифр номера)
+        if (digitsOnly.length !== 11) {
+            return alert("Пожалуйста, введите полный номер телефона (10 цифр после +7).");
+        }
 
         let btn = document.getElementById('submitBtn');
         btn.disabled = true;
-        btn.innerText = "Отправка кода...";
-
-        // Генерируем 4 случайные цифры
-        generatedOtp = Math.floor(1000 + Math.random() * 9000).toString(); 
-
-        try {
-            // Просим скрипт отправить код в бота юзеру
-            await fetch(GOOGLE_SCRIPT_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "sendOTP", tgId: tgId, code: generatedOtp })
-            });
-
-            // Показываем блок ввода кода
-            document.getElementById('otpSection').style.display = 'block';
-            document.getElementById('submitBtn').style.display = 'none';
-
-        } catch (error) {
-            alert("Ошибка сети. Попробуйте еще раз.");
-            btn.disabled = false;
-            btn.innerText = "проверить дырочки";
-        }
-    }
-
-    function cancelOtp() {
-        document.getElementById('otpSection').style.display = 'none';
-        document.getElementById('submitBtn').style.display = 'block';
-        document.getElementById('submitBtn').disabled = false;
-        document.getElementById('submitBtn').innerText = "проверить дырочки";
-        document.getElementById('otpCode').value = '';
-    }
-
-    async function verifyAndBook() {
-        let userCode = document.getElementById('otpCode').value.trim();
-        if (userCode !== generatedOtp) {
-            alert("Неверный код! Попробуй еще раз.");
-            return;
-        }
-
-        let verifyBtn = document.getElementById('verifyBtn');
-        verifyBtn.disabled = true;
-        verifyBtn.innerText = "Бронируем...";
+        btn.innerText = "Бронируем...";
 
         let bookingData = { 
             quest: document.getElementById('questSelect').value, 
-            date: document.getElementById('bookDate').value, 
+            date: date, 
             time: selectedTimeSlot, 
-            name: document.getElementById('userName').value.trim(), 
-            phone: document.getElementById('userPhone').value.trim(),
+            name: name, 
+            phone: phone,
             people: document.getElementById('peopleCount').value,
             tgProfile: tgProfileLink
         };
@@ -325,22 +300,24 @@
                 body: JSON.stringify(bookingData)
             });
 
-            alert(`Успех! Твоя заявка отправлена. Ожидай подтверждения от Инностранного Специалиста.`);
-            cancelOtp();
-            document.getElementById('userPhone').value = '';
+            alert(`Успех! Твоя заявка отправлена. Ожидай подтверждения.`);
+            
+            // Сброс формы после успеха
+            document.getElementById('userPhone').value = '+7 ';
             selectedTimeSlot = "";
             loadAvailableSlots();
         } catch (error) {
             alert("Ошибка при отправке.");
-            verifyBtn.disabled = false;
-            verifyBtn.innerText = "Подтвердить заявку";
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "проверить дырочки";
         }
     }
 
     // --- ПАНЕЛЬ АДМИНА ---
     async function loadAdminData() {
         let listDiv = document.getElementById('adminBookingsList');
-        listDiv.innerHTML = "Загрузка заявкок...";
+        listDiv.innerHTML = "Загрузка заявок...";
         await fetchBookings();
         
         if (!allBookingsCache || allBookingsCache.length === 0) {
@@ -351,8 +328,6 @@
         let html = "";
         allBookingsCache.reverse().forEach((b) => {
             let statusClass = b.status === "Подтверждено" ? "approved" : (b.status === "Отклонено" ? "rejected" : "");
-            
-            // Вставляем ссылку на ТГ и кол-во человек
             let tgHtml = b.tgUser && b.tgUser.length > 5 ? `<a href="${b.tgUser}" target="_blank" style="color: #3498db; text-decoration: underline;">Перейти в TG</a>` : 'Нет TG';
 
             html += `
