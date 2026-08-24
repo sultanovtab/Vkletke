@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -55,6 +56,13 @@
             outline: none;
         }
 
+        /* Уменьшенный компактный размер для поля с датой */
+        input[type="date"] {
+            width: auto;
+            max-width: 170px;
+            display: block;
+        }
+
         select option { background: #111; color: #fff; }
 
         /* Сетка времени (слотов) */
@@ -106,6 +114,7 @@
         }
 
         button:active { opacity: 0.8; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .admin-panel { 
             display: none; 
@@ -167,10 +176,10 @@
             </div>
 
             <label>Ваше имя:</label>
-            <input type="text" id="userName" placeholder="имя магомеда">
+            <input type="text" id="userName" placeholder="имя магомеда" maxlength="40">
 
             <label>Телефон:</label>
-            <input type="tel" id="userPhone" placeholder="телефон мухаммеда">
+            <input type="tel" id="userPhone" placeholder="телефон мухаммеда" maxlength="20">
 
             <button class="main-btn" id="submitBtn" onclick="makeBooking()">проверить дырочки</button>
         </div>
@@ -193,19 +202,16 @@
 
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygoXVdarlwZaf7bXb4jZPmZmSAUNVRXLHL6s1lNJeG3mzkGJLNJMNFF9Raw5iXwJ4I/exec";
 
-    // 6 фиксированных слотов по 45 минут с перерывами
     const ALL_SLOTS = ["12:00", "13:30", "15:00", "16:30", "18:00", "19:30", "21:00"];
     let selectedTimeSlot = "";
     let allBookingsCache = [];
+    let currentAdminPassword = "";
 
     if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
         document.getElementById('userName').value = tg.initDataUnsafe.user.first_name || '';
     }
 
-    // Устанавливаем сегодня по умолчанию
     document.getElementById('bookDate').valueAsDate = new Date();
-    
-    // Загружаем слоты при запуске
     loadAvailableSlots();
 
     function switchTab(role) {
@@ -219,12 +225,25 @@
         }
     }
 
-    function checkAdmin() {
+    async function checkAdmin() {
         let password = prompt("Введите пароль администратора:");
-        if (password === "1234") {
-            switchTab('admin');
-        } else {
-            alert("Неверный пароль!");
+        if (!password) return;
+
+        try {
+            let res = await fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "verifyAdmin", password: password })
+            });
+            let data = await res.json();
+            
+            if (data.status === "success") {
+                currentAdminPassword = password;
+                switchTab('admin');
+            } else {
+                alert("Неверный пароль!");
+            }
+        } catch(e) {
+            alert("Ошибка проверки пароля");
         }
     }
 
@@ -246,7 +265,6 @@
         let currentDate = document.getElementById('bookDate').value;
         grid.innerHTML = "";
 
-        // Находим только ПОДТВЕРЖДЕННЫЕ брони на выбранную дату
         let occupiedTimes = allBookingsCache
             .filter(b => b.date === currentDate && b.status === "Подтверждено")
             .map(b => b.time);
@@ -277,8 +295,8 @@
     async function makeBooking() {
         let quest = document.getElementById('questSelect').value;
         let date = document.getElementById('bookDate').value;
-        let name = document.getElementById('userName').value;
-        let phone = document.getElementById('userPhone').value;
+        let name = document.getElementById('userName').value.trim();
+        let phone = document.getElementById('userPhone').value.trim();
         let btn = document.getElementById('submitBtn');
 
         if (!selectedTimeSlot) {
@@ -291,6 +309,19 @@
             return;
         }
 
+        if (name.length < 2) {
+            alert("Пожалуйста, введите корректное имя.");
+            return;
+        }
+
+        // Базовая валидация номера телефона
+        let phoneDigits = phone.replace(/\D/g, '');
+        if (phoneDigits.length < 7) {
+            alert("Пожалуйста, введите настоящий номер телефона.");
+            return;
+        }
+
+        // Блокировка от спама (Cooldown на 5 секунд)
         btn.disabled = true;
         btn.innerText = "Отправка заявки...";
 
@@ -304,7 +335,7 @@
                 body: JSON.stringify(bookingData)
             });
 
-            alert(`Заявка отправлена!Инностранный Специалист проверит и подтвердит бронь.`);
+            alert(`Заявка отправлена! Инностранный Специалист проверит и подтвердит бронь.`);
             document.getElementById('userPhone').value = '';
             selectedTimeSlot = "";
             loadAvailableSlots();
@@ -312,8 +343,10 @@
             alert("Ошибка при отправке.");
             console.error(error);
         } finally {
-            btn.disabled = false;
-            btn.innerText = "Отправить заявку на бронь";
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerText = "проверить дырочки";
+            }, 5000); // 5 секунд задержки перед повторной отправкой
         }
     }
 
@@ -329,7 +362,6 @@
         }
 
         let html = "";
-        // Сортируем: сначала новые "Ожидает"
         allBookingsCache.reverse().forEach((b) => {
             let statusClass = b.status === "Подтверждено" ? "approved" : (b.status === "Отклонено" ? "rejected" : "");
             
@@ -356,7 +388,12 @@
                 method: "POST",
                 mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "updateStatus", bookingId, newStatus })
+                body: JSON.stringify({ 
+                    action: "updateStatus", 
+                    bookingId: bookingId, 
+                    newStatus: newStatus,
+                    password: currentAdminPassword
+                })
             });
 
             alert(`Статус брони изменен на: ${newStatus}`);
