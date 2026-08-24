@@ -1,60 +1,211 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Кликер</title>
+    <title>Бронирование квестов</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
+            /* Ссылка на фон + легкое затемнение, чтобы текст был читаемым */
+            background-image: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://raw.githubusercontent.com/sultanovtab/Vkletke/refs/heads/main/photo_2026-08-23_15-34-07.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #ffffff;
+            padding: 16px;
             margin: 0;
+            min-height: 100vh;
         }
-        #counter {
-            font-size: 60px;
-            font-weight: bold;
-            color: #2481cc;
-            margin: 20px 0;
+        .container { max-width: 400px; margin: auto; }
+        .card {
+            background: rgba(30, 30, 30, 0.85); /* Полупрозрачный темный блок */
+            backdrop-filter: blur(5px);
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
+        h2 { font-size: 20px; margin-top: 0; text-align: center; color: #fff; }
+        label { font-size: 14px; color: #ddd; }
+        select, input {
+            width: 100%;
+            padding: 12px;
+            margin-top: 6px;
+            margin-bottom: 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(20, 20, 20, 0.9);
+            color: #fff;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+        select option { background: #222; color: #fff; }
         button {
-            background-color: #2481cc;
+            background-color: #e74c3c; /* Красная кнопка в стиле хоррор/квеста */
             color: #ffffff;
             border: none;
-            padding: 15px 30px;
-            font-size: 18px;
-            border-radius: 12px;
+            padding: 14px;
+            width: 100%;
+            font-size: 16px;
+            border-radius: 10px;
             cursor: pointer;
+            font-weight: bold;
+            transition: opacity 0.2s;
         }
+        button:active { opacity: 0.8; }
+        .admin-panel { 
+            display: none; 
+            background: rgba(30, 30, 30, 0.95);
+            border: 2px dashed #e74c3c; 
+            padding: 15px; 
+            margin-top: 20px; 
+            border-radius: 16px; 
+        }
+        .tab-bar { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .tab-bar button { background: rgba(50, 50, 50, 0.8); width: 48%; padding: 10px; font-size: 14px; }
     </style>
 </head>
 <body>
 
-    <h1 id="greeting">Привет я славянка!</h1>
-    <div id="counter">0</div>
-    <button id="clickBtn">вставь мне!</button>
+<div class="container">
+    <div class="tab-bar">
+        <button onclick="switchTab('client')">📅 Бронировать</button>
+        <button onclick="checkAdmin()" style="background-color: rgba(80, 80, 80, 0.8);">🛠 Админка</button>
+    </div>
 
-    <script>
-        let tg = window.Telegram.WebApp;
-        tg.expand();
+    <!-- КЛИЕНТСКАЯ ЧАСТЬ -->
+    <div id="clientView">
+        <div class="card">
+            <h2> Квест «славянка В Клетке с мигрантом»</h2>
+            
+            <label>Выбери квест:</label>
+            <select id="questSelect">
+                <option value="В Клетке (Основной)">каннибал</option>
+                <option value="Хардкор режим">Хардкор режим</option>
+            </select>
 
-        let count = 0;
-        const btn = document.getElementById('clickBtn');
-        const counterText = document.getElementById('counter');
+            <label>Дата:</label>
+            <input type="date" id="bookDate">
 
-        btn.onclick = function() {
-            count += 1;
-            counterText.innerText = count;
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('medium');
+            <label>Время:</label>
+            <select id="timeSelect">
+                <option value="12:00">12:00</option>
+                <option value="15:00">15:00</option>
+                <option value="18:00">18:00</option>
+                <option value="21:00">21:00</option>
+            </select>
+
+            <label>Ваше имя:</label>
+            <input type="text" id="userName" placeholder="Имя ин. специалиста">
+
+            <label>Телефон:</label>
+            <input type="tel" id="userPhone" placeholder="напиши номер мигрантик">
+
+            <button onclick="makeBooking()">Забронировать слот</button>
+        </div>
+    </div>
+
+    <!-- ПАНЕЛЬ АДМИНИСТРАТОРА -->
+    <div id="adminView" class="admin-panel">
+        <h2>Панель администратора</h2>
+        <p style="font-size: 14px; color: #ccc;">Активные бронирования из таблицы:</p>
+        <div id="adminBookingsList" style="font-size: 14px; background: rgba(15, 15, 15, 0.9); color: #fff; padding: 10px; border-radius: 8px; max-height: 300px; overflow-y: auto;">
+            Загрузка броней...
+        </div>
+        <button onclick="switchTab('client')" style="margin-top: 15px; background-color: #555;">Выйти из админки</button>
+    </div>
+</div>
+
+<script>
+    let tg = window.Telegram.WebApp;
+    tg.expand();
+
+    // ⚠️ ВСТАВЬ СВОЮ ССЫЛКУ ИЗ GOOGLE APPS SCRIPT ВМЕСТО ЭТОГО ТЕКСТА (/exec)
+    const GOOGLE_SCRIPT_URL = "/https://script.google.com/macros/s/AKfycbygoXVdarlwZaf7bXb4jZPmZmSAUNVRXLHL6s1lNJeG3mzkGJLNJMNFF9Raw5iXwJ4I/exec";
+
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        document.getElementById('userName').value = tg.initDataUnsafe.user.first_name || '';
+    }
+
+    function switchTab(role) {
+        if (role === 'client') {
+            document.getElementById('clientView').style.display = 'block';
+            document.getElementById('adminView').style.display = 'none';
+        } else {
+            document.getElementById('clientView').style.display = 'none';
+            document.getElementById('adminView').style.display = 'block';
+            loadAdminData();
+        }
+    }
+
+    function checkAdmin() {
+        let password = prompt("Введите пароль администратора:");
+        if (password === "1234") {
+            switchTab('admin');
+        } else {
+            alert("Неверный пароль!");
+        }
+    }
+
+    async function makeBooking() {
+        let quest = document.getElementById('questSelect').value;
+        let date = document.getElementById('bookDate').value;
+        let time = document.getElementById('timeSelect').value;
+        let name = document.getElementById('userName').value;
+        let phone = document.getElementById('userPhone').value;
+
+        if (!date || !name || !phone) {
+            alert("Пожалуйста, заполните все поля!");
+            return;
+        }
+
+        let bookingData = { quest, date, time, name, phone };
+
+        try {
+            let response = await fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(bookingData)
+            });
+
+            alert(`Спасибо, ${name}! Квест успешно забронирован.`);
+            document.getElementById('bookDate').value = '';
+            document.getElementById('userPhone', '').value = '';
+        } catch (error) {
+            alert("Ошибка при бронировании. Проверьте интернет.");
+            console.error(error);
+        }
+    }
+
+    async function loadAdminData() {
+        let listDiv = document.getElementById('adminBookingsList');
+        listDiv.innerHTML = "Загрузка из таблицы...";
+
+        try {
+            let response = await fetch(GOOGLE_SCRIPT_URL);
+            let bookings = await response.json();
+            
+            if (bookings.length === 0) {
+                listDiv.innerHTML = "Пока нет бронирований в таблице.";
+                return;
             }
-        };
-    </script>
+
+            let html = "";
+            bookings.forEach((b, index) => {
+                html += `<b>${index + 1}. ${b.quest}</b><br>📅 ${b.date} в ${b.time}<br>👤 ${b.name} (${b.phone})<hr style="border-color: rgba(255,255,255,0.1)">`;
+            });
+            listDiv.innerHTML = html;
+        } catch (error) {
+            listDiv.innerHTML = "Ошибка загрузки данных.";
+            console.error(error);
+        }
+    }
+</script>
+
 </body>
 </html>
