@@ -431,27 +431,35 @@
         }
     }
 
-    async function checkAdmin() {
-        let password = prompt("Введите пароль администратора:");
-        if (!password) return;
-        try {
-            let res = await fetch(GOOGLE_SCRIPT_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "verifyAdmin", password: password })
-            });
-            let data = await res.json();
-            if (data.status === "success") {
-                currentAdminPassword = password;
-                switchTab('admin');
-            } else {
-                showToast("Неверный пароль!");
-            }
-        } catch(e) { 
-            console.error("Ошибка проверки пароля:", e);
-            showToast("Ошибка проверки пароля");
+// Только измененная функция checkAdmin
+async function checkAdmin() {
+    let password = prompt("Введите пароль администратора:");
+    if (!password) return;
+    
+    try {
+        console.log("🔐 Отправка пароля:", password);
+        
+        let response = await fetch(GOOGLE_SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "verifyAdmin", password: password })
+        });
+        
+        let data = await response.json();
+        console.log("📩 Ответ сервера:", data);
+        
+        if (data.status === "success") {
+            currentAdminPassword = password;
+            showToast("✅ Вход выполнен!", true);
+            switchTab('admin');
+        } else {
+            showToast("❌ Неверный пароль!");
         }
+    } catch(e) { 
+        console.error("❌ Ошибка проверки пароля:", e);
+        showToast("❌ Ошибка соединения с сервером");
     }
+}
 
     async function fetchBookings() {
         try {
