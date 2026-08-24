@@ -331,8 +331,14 @@
 </div>
 
 <script>
-    let tg = window.Telegram.WebApp;
-    tg.expand();
+    let tg = window.Telegram?.WebApp;
+    if (!tg) {
+        alert("Пожалуйста, откройте приложение через Telegram.");
+        // Можно заблокировать кнопку отправки
+        document.getElementById('submitBtn').disabled = true;
+    } else {
+        tg.expand();
+    }
 
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygoXVdarlwZaf7bXb4jZPmZmSAUNVRXLHL6s1lNJeG3mzkGJLNJMNFF9Raw5iXwJ4I/exec";
     const ALL_SLOTS = ["12:00", "13:30", "15:00", "16:30", "18:00", "19:30", "21:00"];
@@ -343,8 +349,8 @@
     let allBookingsCache = [];
     let currentAdminPassword = "";
     
-    let tgUser = tg.initDataUnsafe?.user;
-    let tgId = tgUser?.id || "";
+    let tgUser = tg?.initDataUnsafe?.user;
+    let tgId = tgUser?.id ? String(tgUser.id) : "";
     let tgUsername = tgUser?.username ? "@" + tgUser.username : "";
 
     if (tgUser) document.getElementById('userName').value = tgUser.first_name || '';
@@ -406,6 +412,7 @@
         try {
             let res = await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ action: "verifyAdmin", password: password })
             });
             let data = await res.json();
@@ -477,6 +484,12 @@
         if (!selectedTimeSlot) return alert("Выберите время сеанса!");
         if (!date || !name) return alert("Заполните имя!");
         if (digitsOnly.length !== 11) return alert("Введите полный номер (10 цифр после +7).");
+        
+        // Проверка наличия Telegram ID
+        if (!tgId) {
+            alert("Откройте приложение через Telegram и нажмите Start у бота, чтобы получать уведомления о бронировании.");
+            return;
+        }
 
         let btn = document.getElementById('submitBtn');
         btn.disabled = true;
@@ -496,19 +509,23 @@
         try {
             localStorage.setItem("last_tg_id", tgId);
 
-            await fetch(GOOGLE_SCRIPT_URL, {
+            let response = await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
-                mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(bookingData)
             });
 
-            alert(`Успех! Твоя заявка отправлена. Ожидай подтверждения.`);
-            document.getElementById('userPhone').value = '+7 ';
-            selectedTimeSlot = "";
-            selectedPeople = 4;
-            initPeopleScroller();
-            loadAvailableSlots();
+            let result = await response.json();
+            if (result.status === "success") {
+                alert(`Успех! Твоя заявка отправлена. Ожидай подтверждения.`);
+                document.getElementById('userPhone').value = '+7 ';
+                selectedTimeSlot = "";
+                selectedPeople = 4;
+                initPeopleScroller();
+                loadAvailableSlots();
+            } else {
+                alert("Ошибка при отправке: " + (result.message || "неизвестная ошибка"));
+            }
         } catch (error) {
             alert("Ошибка при отправке.");
         } finally {
@@ -569,8 +586,8 @@
                     🔗 ${contactBtn}<br>
                     ${b.status === "Ожидает" ? `
                         <div class="admin-actions">
-                            <button class="btn-approve" onclick="updateStatus('${b.id}', '${b.tgId}')">✅ Принять</button>
-                            <button class="btn-reject" onclick="updateStatus('${b.id}', '')">❌ Отклонить</button>
+                            <button class="btn-approve" onclick="updateStatus('${b.id}')">✅ Принять</button>
+                            <button class="btn-reject" onclick="rejectBooking('${b.id}')">❌ Отклонить</button>
                         </div>
                     ` : ''}
                 </div>
@@ -579,26 +596,62 @@
         listDiv.innerHTML = html;
     }
 
-    async function updateStatus(bookingId, tgId) {
-        let newStatus = "Подтверждено";
-        let clientTgId = tgId || "";
+    async function updateStatus(bookingId) {
+        if (!currentAdminPassword) {
+            alert("Пароль администратора не установлен. Перезайдите в админку.");
+            return;
+        }
 
         try {
-            await fetch(GOOGLE_SCRIPT_URL, {
+            let response = await fetch(GOOGLE_SCRIPT_URL, {
                 method: "POST",
-                mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
                     action: "updateStatus", 
                     bookingId: bookingId, 
                     newStatus: "Подтверждено", 
-                    clientTgId: clientTgId,
                     password: currentAdminPassword 
                 })
             });
-            alert(`Заявка принята! Бот отправил клиенту подтверждение и правила квеста.`);
-            loadAdminData(); 
-        } catch (e) { alert("Ошибка обновления статуса"); }
+            let data = await response.json();
+            if (data.status === "success") {
+                alert("Заявка принята! Бот отправил клиенту подтверждение и правила квеста.");
+                loadAdminData();
+            } else {
+                alert("Ошибка обновления статуса");
+            }
+        } catch (e) { 
+            alert("Ошибка обновления статуса"); 
+        }
+    }
+
+    async function rejectBooking(bookingId) {
+        if (!currentAdminPassword) {
+            alert("Пароль администратора не установлен. Перезайдите в админку.");
+            return;
+        }
+
+        try {
+            let response = await fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    action: "updateStatus", 
+                    bookingId: bookingId, 
+                    newStatus: "Отклонено", 
+                    password: currentAdminPassword 
+                })
+            });
+            let data = await response.json();
+            if (data.status === "success") {
+                alert("Заявка отклонена.");
+                loadAdminData();
+            } else {
+                alert("Ошибка обновления статуса");
+            }
+        } catch (e) { 
+            alert("Ошибка обновления статуса"); 
+        }
     }
 </script>
 </body>
