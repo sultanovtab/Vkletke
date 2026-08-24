@@ -1,119 +1,371 @@
-// ⚠️ Необязательно, но желательно: Укажи токен бота и свой telegram chat_id для уведомлений
-const TELEGRAM_BOT_TOKEN = "8896691678:AAHL5xZmXL0vbilRipaml5DrWLQXb6oXRsU"; // Например: "8896691678:AAHL5xZmXL0vbilRipaml5DrWLQXb6oXRsU"
-const ADMIN_CHAT_ID = "262051696";      // Твой Telegram ID или ID чата
-
-function doPost(e) {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName("Bookings");
-    
-    if (!sheet) {
-      sheet = ss.insertSheet("Bookings");
-      sheet.appendRow(["ID", "Дата создания", "Квест", "Дата квеста", "Время", "Имя", "Телефон", "Статус"]);
-    }
-    
-    var data = JSON.parse(e.postData.contents);
-
-    // Действие администратора: Подтверждение или Отклонение
-    if (data.action === "updateStatus") {
-      var rows = sheet.getDataRange().getValues();
-      for (var i = 1; i < rows.length; i++) {
-        if (String(rows[i][0]) === String(data.bookingId)) {
-          sheet.getRange(i + 1, 8).setValue("'" + data.newStatus); // Статус в 8-й колонке
-          return ContentService.createTextOutput(JSON.stringify({"status": "success"}))
-                                .setMimeType(ContentService.MimeType.JSON);
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Бронирование квестов</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        html, body {
+            background-color: #000000;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            min-height: 100vh;
+            overflow-x: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #ffffff;
         }
-      }
-      return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": "ID не найден"}))
-                            .setMimeType(ContentService.MimeType.JSON);
+
+        body {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)), url('https://raw.githubusercontent.com/sultanovtab/Vkletke/refs/heads/main/photo_2026-08-23_15-34-07.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            box-sizing: border-box;
+            padding: 16px;
+        }
+
+        .container { max-width: 400px; margin: auto; }
+
+        .card {
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h2 { font-size: 20px; margin-top: 0; text-align: center; color: #fff; }
+        label { font-size: 14px; color: #ddd; display: block; margin-top: 10px; margin-bottom: 4px; }
+        
+        select, input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(10, 10, 10, 0.9);
+            color: #fff;
+            box-sizing: border-box;
+            font-size: 15px;
+            outline: none;
+        }
+
+        select option { background: #111; color: #fff; }
+
+        /* Сетка времени (слотов) */
+        .time-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .time-slot {
+            background: rgba(40, 40, 40, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 0;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .time-slot.selected {
+            background: #e74c3c;
+            border-color: #ff6b6b;
+            color: #fff;
+        }
+
+        .time-slot.disabled {
+            background: rgba(20, 20, 20, 0.5);
+            color: #666;
+            border-color: rgba(255, 255, 255, 0.05);
+            text-decoration: line-through;
+            cursor: not-allowed;
+        }
+
+        button.main-btn {
+            background-color: #e74c3c;
+            color: #ffffff;
+            border: none;
+            padding: 14px;
+            width: 100%;
+            font-size: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+            transition: opacity 0.2s;
+        }
+
+        button:active { opacity: 0.8; }
+
+        .admin-panel { 
+            display: none; 
+            background: rgba(20, 20, 20, 0.95);
+            border: 2px dashed #e74c3c; 
+            padding: 15px; 
+            margin-top: 20px; 
+            border-radius: 16px; 
+        }
+
+        .tab-bar { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .tab-bar button { background: rgba(50, 50, 50, 0.8); width: 48%; padding: 10px; font-size: 14px; margin-top: 0; border: none; color: white; border-radius: 8px; cursor: pointer; }
+
+        .booking-item {
+            background: rgba(10, 10, 10, 0.9);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #f39c12;
+        }
+        .booking-item.approved { border-left-color: #2ecc71; }
+        .booking-item.rejected { border-left-color: #e74c3c; }
+
+        .admin-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .btn-approve { background: #2ecc71; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-reject { background: #e74c3c; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="tab-bar">
+        <button onclick="switchTab('client')">📅 Бронировать</button>
+        <button onclick="checkAdmin()" style="background-color: rgba(80, 80, 80, 0.8);">🛠 Админка</button>
+    </div>
+
+    <!-- КЛИЕНТСКАЯ ЧАСТЬ -->
+    <div id="clientView">
+        <div class="card">
+            <h2>Квест «В Клетке»</h2>
+            
+            <label>Выбери режим квеста:</label>
+            <select id="questSelect">
+                <option value="Каннибал">каннибал (Основной)</option>
+                <option value="Хардкор режим">Хардкор режим</option>
+            </select>
+
+            <label>Дата:</label>
+            <input type="date" id="bookDate" onchange="loadAvailableSlots()">
+
+            <label>Свободные сеансы (нажмите для выбора):</label>
+            <div class="time-grid" id="timeGrid">
+                <!-- Слоты закроются или откроются автоматически -->
+            </div>
+
+            <label>Ваше имя:</label>
+            <input type="text" id="userName" placeholder="Ваше имя">
+
+            <label>Телефон:</label>
+            <input type="tel" id="userPhone" placeholder="+7 (___) ___-__-__">
+
+            <button class="main-btn" id="submitBtn" onclick="makeBooking()">Отправить заявку на бронь</button>
+        </div>
+    </div>
+
+    <!-- ПАНЕЛЬ АДМИНИСТРАТОРА -->
+    <div id="adminView" class="admin-panel">
+        <h2>Панель администратора</h2>
+        <p style="font-size: 14px; color: #ccc;">Управление заявками:</p>
+        <div id="adminBookingsList" style="font-size: 14px; max-height: 400px; overflow-y: auto;">
+            Загрузка броней...
+        </div>
+        <button class="main-btn" onclick="switchTab('client')" style="background-color: #555;">Выйти из админки</button>
+    </div>
+</div>
+
+<script>
+    let tg = window.Telegram.WebApp;
+    tg.expand();
+
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygoXVdarlwZaf7bXb4jZPmZmSAUNVRXLHL6s1lNJeG3mzkGJLNJMNFF9Raw5iXwJ4I/exec";
+
+    // 6 фиксированных слотов по 45 минут с перерывами
+    const ALL_SLOTS = ["12:00", "13:30", "15:00", "16:30", "18:00", "19:30", "21:00"];
+    let selectedTimeSlot = "";
+    let allBookingsCache = [];
+
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        document.getElementById('userName').value = tg.initDataUnsafe.user.first_name || '';
     }
 
-    // Создание новой брони
-    var bookingId = "B" + new Date().getTime(); // Уникальный ID брони
-    var status = "Ожидает";
+    // Устанавливаем сегодня по умолчанию
+    document.getElementById('bookDate').valueAsDate = new Date();
+    
+    // Загружаем слоты при запуске
+    loadAvailableSlots();
 
-    sheet.appendRow([
-      "'" + bookingId,
-      "'" + new Date().toLocaleString("ru-RU"),
-      "'" + (data.quest || ""),
-      "'" + (data.date || ""),
-      "'" + (data.time || ""),
-      "'" + (data.name || ""),
-      "'" + (data.phone || ""),
-      "'" + status
-    ]);
-
-    // Отправка уведомления администратору в Telegram (если указан токен)
-    if (TELEGRAM_BOT_TOKEN && ADMIN_CHAT_ID) {
-      var message = "🚨 *НОВАЯ ЗАЯВКА НА БРОНЬ!*\n\n" +
-                    "🎭 *Квест:* " + data.quest + "\n" +
-                    "📅 *Дата:* " + data.date + " в " + data.time + "\n" +
-                    "👤 *Имя:* " + data.name + "\n" +
-                    "📞 *Тел:* " + data.phone;
-      sendTelegramNotice(message);
+    function switchTab(role) {
+        if (role === 'client') {
+            document.getElementById('clientView').style.display = 'block';
+            document.getElementById('adminView').style.display = 'none';
+        } else {
+            document.getElementById('clientView').style.display = 'none';
+            document.getElementById('adminView').style.display = 'block';
+            loadAdminData();
+        }
     }
-    
-    return ContentService.createTextOutput(JSON.stringify({"status": "success", "id": bookingId}))
-                          .setMimeType(ContentService.MimeType.JSON);
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({"status": "error", "message": error.toString()}))
-                          .setMimeType(ContentService.MimeType.JSON);
-  }
-}
 
-function doGet(e) {
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName("Bookings");
-    
-    if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+    function checkAdmin() {
+        let password = prompt("Введите пароль администратора:");
+        if (password === "1234") {
+            switchTab('admin');
+        } else {
+            alert("Неверный пароль!");
+        }
     }
-    
-    var rows = sheet.getDataRange().getValues();
-    if (rows.length <= 1) {
-      return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+
+    async function fetchBookings() {
+        try {
+            let response = await fetch(GOOGLE_SCRIPT_URL);
+            allBookingsCache = await response.json();
+        } catch (e) {
+            console.error("Ошибка загрузки данных", e);
+        }
     }
-    
-    var bookings = [];
-    
-    for (var i = 1; i < rows.length; i++) {
-      if (rows[i][2] || rows[i][5]) {
-        var rawDate = rows[i][3];
-        var displayDate = (rawDate instanceof Date) ? rawDate.toLocaleDateString('ru-RU') : String(rawDate || '').replace(/^'/, '');
 
-        var rawTime = rows[i][4];
-        var displayTime = (rawTime instanceof Date) ? rawTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : String(rawTime || '').replace(/^'/, '');
+    async function loadAvailableSlots() {
+        let grid = document.getElementById('timeGrid');
+        grid.innerHTML = "<div style='grid-column: span 3; text-align: center; color: #888;'>Проверка слотов...</div>";
 
-        bookings.push({
-          id: String(rows[i][0] || '').replace(/^'/, ''),
-          timestamp: String(rows[i][1] || ''),
-          quest: String(rows[i][2] || '').replace(/^'/, ''),
-          date: displayDate,
-          time: displayTime,
-          name: String(rows[i][5] || ''),
-          phone: String(rows[i][6] || '').replace(/^'/, ''),
-          status: String(rows[i][7] || 'Ожидает').replace(/^'/, '')
+        await fetchBookings();
+
+        let currentDate = document.getElementById('bookDate').value;
+        grid.innerHTML = "";
+
+        // Находим только ПОДТВЕРЖДЕННЫЕ брони на выбранную дату
+        let occupiedTimes = allBookingsCache
+            .filter(b => b.date === currentDate && b.status === "Подтверждено")
+            .map(b => b.time);
+
+        ALL_SLOTS.forEach(slot => {
+            let div = document.createElement('div');
+            div.className = 'time-slot';
+            div.innerText = slot;
+
+            if (occupiedTimes.includes(slot)) {
+                div.classList.add('disabled');
+                div.title = "Слот занят";
+            } else {
+                if (slot === selectedTimeSlot) {
+                    div.classList.add('selected');
+                }
+                div.onclick = function() {
+                    document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+                    div.classList.add('selected');
+                    selectedTimeSlot = slot;
+                };
+            }
+
+            grid.appendChild(div);
         });
-      }
     }
-    
-    return ContentService.createTextOutput(JSON.stringify(bookings)).setMimeType(ContentService.MimeType.JSON);
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
-  }
-}
 
-function sendTelegramNotice(text) {
-  var url = "https://api.telegram.org/bot" + TELEGRAM_BOT_TOKEN + "/sendMessage";
-  var payload = {
-    "chat_id": ADMIN_CHAT_ID,
-    "text": text,
-    "parse_mode": "Markdown"
-  };
-  UrlFetchApp.fetch(url, {
-    "method": "post",
-    "contentType": "application/json",
-    "payload": JSON.stringify(payload)
-  });
-}
+    async function makeBooking() {
+        let quest = document.getElementById('questSelect').value;
+        let date = document.getElementById('bookDate').value;
+        let name = document.getElementById('userName').value;
+        let phone = document.getElementById('userPhone').value;
+        let btn = document.getElementById('submitBtn');
+
+        if (!selectedTimeSlot) {
+            alert("Пожалуйста, выберите время сеанса!");
+            return;
+        }
+
+        if (!date || !name || !phone) {
+            alert("Пожалуйста, заполните имя и телефон!");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = "Отправка заявки...";
+
+        let bookingData = { quest, date, time: selectedTimeSlot, name, phone };
+
+        try {
+            await fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(bookingData)
+            });
+
+            alert(`Заявка отправлена! Администратор проверит время и подтвердит бронь.`);
+            document.getElementById('userPhone').value = '';
+            selectedTimeSlot = "";
+            loadAvailableSlots();
+        } catch (error) {
+            alert("Ошибка при отправке.");
+            console.error(error);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Отправить заявку на бронь";
+        }
+    }
+
+    async function loadAdminData() {
+        let listDiv = document.getElementById('adminBookingsList');
+        listDiv.innerHTML = "Загрузка заявкок...";
+
+        await fetchBookings();
+        
+        if (!allBookingsCache || allBookingsCache.length === 0) {
+            listDiv.innerHTML = "Заявок нет.";
+            return;
+        }
+
+        let html = "";
+        // Сортируем: сначала новые "Ожидает"
+        allBookingsCache.reverse().forEach((b) => {
+            let statusClass = b.status === "Подтверждено" ? "approved" : (b.status === "Отклонено" ? "rejected" : "");
+            
+            html += `
+                <div class="booking-item ${statusClass}">
+                    <b>${b.quest}</b> [${b.status}]<br>
+                    📅 <b>${b.date} в ${b.time}</b><br>
+                    👤 ${b.name} (${b.phone})<br>
+                    ${b.status === "Ожидает" ? `
+                        <div class="admin-actions">
+                            <button class="btn-approve" onclick="updateStatus('${b.id}', 'Подтверждено')">✅ Принять</button>
+                            <button class="btn-reject" onclick="updateStatus('${b.id}', 'Отклонено')">❌ Отклонить</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        });
+        listDiv.innerHTML = html;
+    }
+
+    async function updateStatus(bookingId, newStatus) {
+        try {
+            await fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "updateStatus", bookingId, newStatus })
+            });
+
+            alert(`Статус брони изменен на: ${newStatus}`);
+            loadAdminData();
+        } catch (e) {
+            alert("Ошибка обновления статуса");
+        }
+    }
+</script>
+
+</body>
+</html>
