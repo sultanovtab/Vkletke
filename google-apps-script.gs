@@ -1,8 +1,8 @@
 const TELEGRAM_BOT_TOKEN = "ТВОЙ_ТОКЕН_БОТА"; 
 const ADMIN_CHAT_ID = "ТВОЙ_CHAT_ID";        
 const ADMIN_PASSWORD = "1234";                
-// Ссылка на файл с правилами на GitHub (можно заменить на любую прямую ссылку на PDF/картинку/TXT)
-const RULES_FILE_URL = "https://raw.githubusercontent.com/sultanovtab/Vkletke/refs/heads/main/rules.pdf"; 
+// ✅ ПРАВИЛЬНАЯ ссылка на файл с правилами (прямой доступ через raw.githubusercontent.com)
+const RULES_FILE_URL = "https://raw.githubusercontent.com/sultanovtab/Vkletke/main/rules.pdf"; 
 
 function doPost(e) {
   try {
@@ -80,9 +80,6 @@ function doPost(e) {
     var bookingId = "B" + new Date().getTime();
     var status = "Ожидает";
 
-    // Сохраняем TG ID отдельно в колонку 9 (индекс 8)
-    // А в колонку 10 (индекс 9) - ссылку для удобства админа
-
     // Формируем ссылку для админа
     var tableTgLink = "Нет данных";
     if (tgUsername) {
@@ -145,7 +142,7 @@ function doGet(e) {
         var rawTime = rows[i][4];
         var displayTime = (rawTime instanceof Date) ? rawTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : String(rawTime || '').replace(/^'/, '');
 
-        // Теперь тgId берем из колонки 9 (индекс 8)
+        // Теперь tgId берем из колонки 9 (индекс 8)
         var tgId = String(rows[i][8] || '').replace(/^'/, '');
 
         bookings.push({
@@ -190,7 +187,7 @@ function sendTelegramNotice(chatId, text) {
 function sendClientApprovalMessage(chatId, quest, date, time) {
   try {
     var text = "🎉 *Ваша заявка принята администратором!*\n\n" +
-               "Мы ждем вас на квест *«" + quest + "»*:\n" +
+               "Мы ждем вас на квест *\"" + quest + "\"*:\n" +
                "📅 *Дата:* " + date + "\n" +
                "⏰ *Время:* " + time + "\n\n" +
                "Пожалуйста, ознакомьтесь с правилами квеста в приложенном файле ниже. До встречи!";
@@ -207,7 +204,7 @@ function sendClientApprovalMessage(chatId, quest, date, time) {
         "payload": JSON.stringify({
           "chat_id": chatId,
           "document": RULES_FILE_URL,
-          "caption": "📄 Официальные правила квеста «В Клетке»"
+          "caption": "📄 Официальные правила квеста \"В Клетке\""
         }),
         "muteHttpExceptions": true
       };
