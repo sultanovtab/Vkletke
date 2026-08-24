@@ -55,54 +55,218 @@
             outline: none;
         }
 
-        input[type="date"], input[type="number"] {
-            width: auto;
-            max-width: 170px;
-            display: block;
+        input[type="date"] {
+            width: 100%;
         }
 
         select option { background: #111; color: #fff; }
 
-        .time-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
+        /* Горизонтальная прокрутка времени */
+        .time-scroll-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .time-grid {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-behavior: smooth;
+            padding: 8px 0;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            /* Скрыть скроллбар для мобильных */
+            scrollbar-width: none;
+        }
+
+        .time-grid::-webkit-scrollbar {
+            display: none;
+        }
         
         .time-slot {
-            background: rgba(40, 40, 40, 0.8); border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 10px 0; text-align: center; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; transition: all 0.2s;
+            background: rgba(40, 40, 40, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px 16px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.2s;
+            min-width: 70px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            scroll-snap-align: start;
         }
-        .time-slot.selected { background: #e74c3c; border-color: #ff6b6b; color: #fff; }
-        .time-slot.disabled { background: rgba(20, 20, 20, 0.5); color: #666; border-color: rgba(255, 255, 255, 0.05); text-decoration: line-through; cursor: not-allowed; }
+
+        .time-slot.selected {
+            background: #e74c3c;
+            border-color: #ff6b6b;
+            color: #fff;
+            box-shadow: 0 0 12px rgba(231, 76, 60, 0.5);
+        }
+
+        .time-slot.disabled {
+            background: rgba(100, 100, 100, 0.5);
+            color: #888;
+            border-color: rgba(255, 255, 255, 0.05);
+            text-decoration: line-through;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* Прокрутка количества людей */
+        .people-scroll-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .people-scroller {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            flex: 1;
+            scrollbar-width: none;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .people-scroller::-webkit-scrollbar {
+            display: none;
+        }
+
+        .people-option {
+            background: rgba(40, 40, 40, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            min-width: 50px;
+            text-align: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+
+        .people-option.selected {
+            background: #2ecc71;
+            border-color: #27ae60;
+            box-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+        }
+
+        .people-option:active {
+            transform: scale(0.95);
+        }
+
+        /* Инструкция для прокрутки */
+        .scroll-hint {
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+            margin-top: 4px;
+        }
 
         button.main-btn {
-            background-color: #e74c3c; color: #ffffff; border: none; padding: 14px; width: 100%;
-            font-size: 16px; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: opacity 0.2s;
+            background-color: #e74c3c;
+            color: #ffffff;
+            border: none;
+            padding: 14px;
+            width: 100%;
+            font-size: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+            transition: opacity 0.2s;
         }
+
         button:active { opacity: 0.8; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .admin-panel { display: none; background: rgba(20, 20, 20, 0.95); border: 2px dashed #e74c3c; padding: 15px; margin-top: 20px; border-radius: 16px; }
-        .tab-bar { display: flex; justify-content: space-between; margin-bottom: 15px; }
-        .tab-bar button { background: rgba(50, 50, 50, 0.8); width: 48%; padding: 10px; font-size: 14px; margin-top: 0; border: none; color: white; border-radius: 8px; cursor: pointer; }
-
-        .booking-item { 
-            background: rgba(10, 10, 10, 0.9); 
-            padding: 12px; 
-            border-radius: 8px; 
-            margin-bottom: 10px; 
-            border-left: 4px solid #f39c12; 
+        .admin-panel {
+            display: none;
+            background: rgba(20, 20, 20, 0.95);
+            border: 2px dashed #e74c3c;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 16px;
         }
+
+        .tab-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .tab-bar button {
+            background: rgba(50, 50, 50, 0.8);
+            width: 48%;
+            padding: 10px;
+            font-size: 14px;
+            margin-top: 0;
+            border: none;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .booking-item {
+            background: rgba(10, 10, 10, 0.9);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #f39c12;
+        }
+
         .booking-item.approved { border-left-color: #2ecc71; }
         .booking-item.rejected { border-left-color: #e74c3c; }
-        .booking-item.conflict { border: 2px solid #e74c3c; background: rgba(40, 10, 10, 0.9); border-left: 4px solid #e74c3c; }
-        
-        .conflict-badge {
-            background-color: #e74c3c; color: white; font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 5px;
+        .booking-item.conflict {
+            border: 2px solid #e74c3c;
+            background: rgba(40, 10, 10, 0.9);
+            border-left: 4px solid #e74c3c;
         }
 
-        .admin-actions { display: flex; gap: 8px; margin-top: 8px; }
-        .btn-approve { background: #2ecc71; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .btn-reject { background: #e74c3c; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        
-        /* Кнопка связи с клиентом */
+        .conflict-badge {
+            background-color: #e74c3c;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .btn-approve {
+            background: #2ecc71;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-reject {
+            background: #e74c3c;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
         .btn-tg-contact {
             display: inline-block;
             background-color: #3498db;
@@ -139,10 +303,16 @@
             <input type="date" id="bookDate" onchange="loadAvailableSlots()">
 
             <label>Свободные сеансы:</label>
-            <div class="time-grid" id="timeGrid"></div>
+            <div class="time-scroll-container">
+                <div class="time-grid" id="timeGrid"></div>
+                <div class="scroll-hint">← Свайп для прокрутки →</div>
+            </div>
 
             <label>Количество человек:</label>
-            <input type="number" id="peopleCount" min="2" max="10" value="4">
+            <div class="people-scroll-container">
+                <div class="people-scroller" id="peopleScroller"></div>
+            </div>
+            <div class="scroll-hint">← Выбери количество игроков →</div>
 
             <label>Ваше имя:</label>
             <input type="text" id="userName" placeholder="имя магомеда" maxlength="40">
@@ -168,8 +338,10 @@
 
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbygoXVdarlwZaf7bXb4jZPmZmSAUNVRXLHL6s1lNJeG3mzkGJLNJMNFF9Raw5iXwJ4I/exec";
     const ALL_SLOTS = ["12:00", "13:30", "15:00", "16:30", "18:00", "19:30", "21:00"];
+    const PEOPLE_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9, 10];
     
     let selectedTimeSlot = "";
+    let selectedPeople = 4;
     let allBookingsCache = [];
     let currentAdminPassword = "";
     
@@ -179,7 +351,25 @@
 
     if (tgUser) document.getElementById('userName').value = tgUser.first_name || '';
     document.getElementById('bookDate').valueAsDate = new Date();
+    
+    initPeopleScroller();
     loadAvailableSlots();
+
+    function initPeopleScroller() {
+        let scroller = document.getElementById('peopleScroller');
+        scroller.innerHTML = "";
+        PEOPLE_OPTIONS.forEach(num => {
+            let div = document.createElement('div');
+            div.className = 'people-option' + (num === selectedPeople ? ' selected' : '');
+            div.innerText = num;
+            div.onclick = function() {
+                document.querySelectorAll('.people-option').forEach(p => p.classList.remove('selected'));
+                div.classList.add('selected');
+                selectedPeople = num;
+            };
+            scroller.appendChild(div);
+        });
+    }
 
     const phoneInput = document.getElementById('userPhone');
     phoneInput.addEventListener('input', function(e) {
@@ -237,7 +427,7 @@
 
     async function loadAvailableSlots() {
         let grid = document.getElementById('timeGrid');
-        grid.innerHTML = "<div style='grid-column: span 3; text-align: center; color: #888;'>Проверка слотов...</div>";
+        grid.innerHTML = "<div style='padding: 12px 16px; color: #888;'>Проверка слотов...</div>";
         await fetchBookings();
         let currentDate = document.getElementById('bookDate').value;
         grid.innerHTML = "";
@@ -246,7 +436,9 @@
             .filter(b => b.date === currentDate && b.status === "Подтверждено")
             .map(b => b.time);
 
-        ALL_SLOTS.forEach(slot => {
+        let firstFreeSlotIndex = -1;
+
+        ALL_SLOTS.forEach((slot, index) => {
             let div = document.createElement('div');
             div.className = 'time-slot';
             div.innerText = slot;
@@ -254,6 +446,7 @@
             if (occupiedTimes.includes(slot)) {
                 div.classList.add('disabled');
             } else {
+                if (firstFreeSlotIndex === -1) firstFreeSlotIndex = index;
                 if (slot === selectedTimeSlot) div.classList.add('selected');
                 div.onclick = function() {
                     document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
@@ -263,6 +456,20 @@
             }
             grid.appendChild(div);
         });
+
+        // Автоскролл к первому свободному слоту
+        if (firstFreeSlotIndex !== -1) {
+            setTimeout(() => {
+                let slots = grid.querySelectorAll('.time-slot');
+                if (slots[firstFreeSlotIndex]) {
+                    slots[firstFreeSlotIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+                    // Выбираем первый свободный автоматически
+                    if (!selectedTimeSlot) {
+                        slots[firstFreeSlotIndex].click();
+                    }
+                }
+            }, 100);
+        }
     }
 
     async function submitBooking() {
@@ -285,13 +492,12 @@
             time: selectedTimeSlot, 
             name: name, 
             phone: phone,
-            people: document.getElementById('peopleCount').value,
+            people: selectedPeople,
             tgUsername: tgUsername,
             tgId: tgId
         };
 
         try {
-            // Сохраняем tgId в локальный кэш для отправки из админки при принятии
             localStorage.setItem("last_tg_id", tgId);
 
             await fetch(GOOGLE_SCRIPT_URL, {
@@ -304,6 +510,8 @@
             alert(`Успех! Твоя заявка отправлена. Ожидай подтверждения.`);
             document.getElementById('userPhone').value = '+7 ';
             selectedTimeSlot = "";
+            selectedPeople = 4;
+            initPeopleScroller();
             loadAvailableSlots();
         } catch (error) {
             alert("Ошибка при отправке.");
@@ -332,7 +540,6 @@
         });
 
         let html = "";
-        // Проходимся по всем заявкам и рендерим карточки
         allBookingsCache.reverse().forEach((b) => {
             let statusClass = b.status === "Подтверждено" ? "approved" : (b.status === "Отклонено" ? "rejected" : "");
             
@@ -342,7 +549,6 @@
                 statusClass += " conflict";
             }
 
-            // Формируем красивую кликабельную кнопку связи с клиентом
             let contactBtn = "Нет данных";
             let contactStr = b.tgContact || "";
             
@@ -354,7 +560,6 @@
                 }
             } else if (contactStr.includes("ID:")) {
                 let idNum = contactStr.replace("ID:", "").trim();
-                // Универсальная ссылка через tg:// для мобильного приложения Telegram
                 contactBtn = `<a href="tg://user?id=${idNum}" target="_blank" class="btn-tg-contact">💬 Открыть чат (ID: ${idNum})</a>`;
             }
 
@@ -380,15 +585,11 @@
 
     async function updateStatus(bookingId, tgContactInfo) {
         let newStatus = "Подтверждено";
-        // Если кнопка была отклонить, передается пустой контакт и статус меняется на отклонено
-        // Но проще разделить функции или обрабатывать аргументы
         let clientTgId = "";
         if (tgContactInfo) {
             if (tgContactInfo.includes("ID:")) {
                 clientTgId = tgContactInfo.replace("ID:", "").trim();
             } else if (tgContactInfo.includes("t.me/")) {
-                // Если у нас в строке записана гиперссылка с юзернеймом, попробуем извлечь его или пусть бот пишет по тому что есть
-                // Для надежности извлекаем id если оно где-то сохранено, или передаем юзернейм
                 let match = tgContactInfo.match(/t\.me\/([^"]+)/);
                 if (match) clientTgId = "@" + match[1];
             }
